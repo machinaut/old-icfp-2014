@@ -21,6 +21,9 @@ namespace LambdaManBoardUtil
         [JsonProperty("ghosts")]
         public List<Ghost> Ghosts { get; set; }
 
+        [JsonProperty("lambdaMan")]
+        public LambdaMan LambdaMan { get; set; }
+
         public BoardFrame()
         {
 

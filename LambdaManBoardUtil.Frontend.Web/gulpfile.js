@@ -12,7 +12,7 @@ var react = require('gulp-react');
 
 // Lint Task
 gulp.task('lint', function () {
-    return gulp.src(['js/*.js', '!./js/debug/*.js'])
+    return gulp.src(['js/*.js', '!./js/debug/*.js', '*.js'])
         .pipe(jshint())
         .pipe(jshint.reporter('default'));
 });
@@ -25,7 +25,7 @@ gulp.task('react-compile', function () {
 
 gulp.task('bower', function () {
     return bower()
-      .pipe(gulp.dest('dist/'))
+      .pipe(gulp.dest('dist/'));
 });
 
 // Concatenate & Minify JS
@@ -37,6 +37,7 @@ gulp.task('scripts', function () {
 
 // Watch Files For Changes
 gulp.task('watch', function () {
+    gulp.watch('*.js',  ['lint']);
     gulp.watch('js/*.js',  ['lint', 'scripts']);
     gulp.watch('js/*.jsx', ['react-compile', 'lint', 'scripts']);
 });

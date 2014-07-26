@@ -5,10 +5,10 @@ var ExampleModel = Backbone.Model.extend({
     initialize: function() {
         var self = this;
         var socket = io.connect('ws://localhost:8080');
-        socket.on('news', function (data) {
+        socket.on('init_response', function (data) {
             //console.log(data);
             self.set({name: data});
-            socket.emit('my other event', { my: 'data' });
+            //socket.emit('my other event', { my: 'data' });
         });
          
     },

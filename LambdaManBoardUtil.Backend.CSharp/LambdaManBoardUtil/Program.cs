@@ -26,6 +26,8 @@ namespace LambdaManBoardUtil
 
                 worker.CalculateEverything();
 
+                worker.DoWork();
+
                 Console.WriteLine("whoah");
                 Console.ReadKey();
             }
@@ -37,6 +39,10 @@ namespace LambdaManBoardUtil
         string _pathToWork, _toAddress, _fromAddress;
 
         BPlusTree<uint, byte[]> _frames;
+        public BPlusTree<uint, byte[]> Frames
+        {
+            get { return _frames; }
+        }
 
         List<uint> _frameTickList;
 
@@ -66,6 +72,7 @@ namespace LambdaManBoardUtil
             if (_frames != null)
             {
                 _frames.Dispose();
+                _frames = null;
             }
         }
 
@@ -74,11 +81,13 @@ namespace LambdaManBoardUtil
             if (_frames != null)
             {
                 _frames.Dispose();
+                _frames = null;
             }
         }
 
         public void CalculateEverything()
         {
+            var random = new Random();
             var bf = new BinaryFormatter();
 
             foreach (var line in File.ReadLines(_pathToWork))
@@ -87,9 +96,16 @@ namespace LambdaManBoardUtil
                     
                 MemoryStream ms = new MemoryStream();
                 bf.Serialize(ms, boardFrame);
-                _frames.Add(boardFrame.TickNumber, ms.ToArray());
 
-                _frameTickList.Add(boardFrame.TickNumber);
+                var fakeTick = (uint)random.Next(int.MaxValue);
+
+                _frames.Add(//boardFrame.TickNumber
+                    fakeTick
+                    , ms.ToArray());
+
+                _frameTickList.Add(//boardFrame.TickNumber
+                    fakeTick
+                    );
                 _frameTickList.Sort();
             }
             
@@ -103,33 +119,39 @@ namespace LambdaManBoardUtil
                                    sender = context.CreatePushSocket())
                 {
                     receiver.Connect(_fromAddress);
-                    sender.Connect(_toAddress);
+                    sender.Bind(_toAddress);
+                    Console.WriteLine("connected");
+                    System.Threading.Thread.Sleep(6000);
+                    Console.WriteLine("sending");
 
-                    // Allows us to remotely kill the process
+                    sender.Send(JsonConvert.SerializeObject(new MessageFrame() { Type = "initResponse", Parameters = "wow server" }));
+
+                    Console.WriteLine("sent");
                     while (true)
                     {
-                        var request = receiver.ReceiveString();
+                        var rawRequest = receiver.ReceiveString();
+                        Console.WriteLine("got request!");
 
+                        var request = JsonConvert.DeserializeObject<MessageFrame>(rawRequest);
 
+                        MessageFrame response = new MessageFrame();
 
-                        //string taskString = receiver.ReceiveString();
+                        switch(request.Type)
+                        {
+                            case "initRequest":
+                            {
+                                response.Type = "initResponse";
+                                response.Parameters = JsonConvert.SerializeObject(_frameTickList);
+                                break;
+                            }
+                        }
 
-                        //var tasks = taskString.Split(',');
-
-                        //var job = tasks[0]; // First index is Job id
-
-                        //var result = new JobResult(job);
-
-                        //// Our 'work'
-                        //foreach (var word in tasks.Skip(1).Distinct())
-                        //{
-                        //    result.Data[word] = tasks.Count(p => p == word);
-                        //}
-
-                        //var serializeMe = JsonConvert.SerializeObject(result);
-
-                        //// Send 'result' to the sink
-                        //sender.Send(serializeMe);
+                        if (!string.IsNullOrWhiteSpace(response.Type))
+                        {
+                            var serialized = JsonConvert.SerializeObject(response);
+                            Console.WriteLine("sending init response, \n" + serialized);
+                            sender.Send(serialized);
+                        }
                     }
                 }
             }
