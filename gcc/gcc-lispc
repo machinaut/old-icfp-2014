@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 ################ Lispy: Scheme Interpreter in Python
 
@@ -96,11 +96,11 @@ isa = isinstance
 
 def eval(x, env=global_env):
     "Evaluate an expression in an environment."
-    print "; eval(%r)" % x
+    print("; eval(%r)" % x)
     if isa(x, Symbol):             # variable reference
         return env.find(x)[x]
     elif not isa(x, list):         # constant literal
-        print Ldc(x)
+        print(Ldc(x))
         return
     #elif x[0] == 'quote':          # (quote exp)
     #    (_, exp) = x
@@ -115,7 +115,7 @@ def eval(x, env=global_env):
     #    (_, var, exp) = x
     #    #env[var] = eval(exp, env)
     #    eval(exp, env)
-    #    print St(0, 0)
+    #    print(St(0, 0))
     #    return
     #elif x[0] == 'lambda':         # (lambda (var*) exp)
     #    (_, vars, exp) = x
@@ -125,11 +125,11 @@ def eval(x, env=global_env):
     #        val = eval(exp, env)
     #    return val
     else:                          # (proc exp*)
-        print "; proc '%s'" % x[0]
+        print("; proc '%s'" % x[0])
         exps = [eval(exp, env) for exp in x]
         proc = exps.pop(0)
         if issubclass(proc, Instruction):
-            print proc()
+            print(proc())
         return
         #return proc(*exps)
 
@@ -177,7 +177,7 @@ def repl(prompt='lis.py> '):
     "A prompt-read-eval-print loop."
     while True:
         val = eval(parse(raw_input(prompt)))
-        if val is not None: print to_string(val)
+        if val is not None: print(to_string(val))
 
 if __name__ == "__main__":
     for line in fileinput.input():
