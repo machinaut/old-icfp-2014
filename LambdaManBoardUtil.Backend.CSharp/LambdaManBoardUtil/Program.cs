@@ -90,6 +90,7 @@ namespace LambdaManBoardUtil
                 _frames.Add(boardFrame.TickNumber, ms.ToArray());
 
                 _frameTickList.Add(boardFrame.TickNumber);
+                _frameTickList.Sort();
             }
             
         }
