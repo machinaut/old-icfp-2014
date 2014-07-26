@@ -66,6 +66,9 @@ class GameState:
         self.board = []
         self.ghosts = []
         self.lambdaMan = None
+        self.meta = {'utc': 1,
+                     'score': 0,
+                     }
          
 
     def addGhost(self, loc, vitality=gVital['standard'], dir=direction['down']):
