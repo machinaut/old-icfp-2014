@@ -32,6 +32,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CSharpTest.Net.BPlusTree">
+      <HintPath>..\packages\CSharpTest.Net.BPlusTree.2.14.126.467\lib\net45\CSharpTest.Net.BPlusTree.dll</HintPath>
+    </Reference>
+    <Reference Include="CSharpTest.Net.Library">
+      <HintPath>..\packages\CSharpTest.Net.Library.2.14.126.467\lib\net45\CSharpTest.Net.Library.dll</HintPath>
+    </Reference>
     <Reference Include="NetMQ">
       <HintPath>..\packages\NetMQ.3.3.0.10\lib\net40\NetMQ.dll</HintPath>
     </Reference>

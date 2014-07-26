@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace LambdaManBoardUtil
 {
+    [Serializable]
     [JsonObject]
     public class BoardFrame
     {
@@ -17,7 +18,8 @@ namespace LambdaManBoardUtil
         [JsonProperty("board")]
         public byte[][] Board { get; set; }
 
-        public List<Ghost>
+        [JsonProperty("ghosts")]
+        public List<Ghost> Ghosts { get; set; }
 
         public BoardFrame()
         {
@@ -31,6 +33,7 @@ namespace LambdaManBoardUtil
         }
     }
 
+    [Serializable]
     [JsonObject]
     public class Ghost
     {
@@ -42,6 +45,7 @@ namespace LambdaManBoardUtil
         public Location Location { get; set; }
     }
 
+    [Serializable]
     public class LambdaMan
     {
         [JsonProperty("direction")]
@@ -61,6 +65,7 @@ namespace LambdaManBoardUtil
         public int Vitality { get; set; }
     }
 
+    [Serializable]
     [JsonObject]
     public class Location
     {
@@ -80,17 +85,25 @@ namespace LambdaManBoardUtil
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
             var location = value as Location;
-
-            writer.WriteValue(new List<int>() { location.X, location.Y });
+            writer.WriteStartArray();
+            //writer.WriteValue(new List<int>() { location.X, location.Y });
+            writer.WriteValue(location.X);
+            writer.WriteValue(location.Y);
+            writer.WriteEndArray();
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            Console.WriteLine(reader.Value);
-            //JArray a = JArray.Parse(reader.Value);
-            //var location = new Location()
+            JArray jObject = JArray.Load(reader);
+            var x = (int)JsonConvert.DeserializeObject(jObject.First.ToString(), typeof(int));
+            var y = (int)JsonConvert.DeserializeObject(jObject.Last.ToString(), typeof(int));
+            return new Location(x, y);
+        }
 
-            return null;
+        public override bool CanConvert(Type objectType)
+        {
+            //return (objectType == typeof(Location));
+            return true;
         }
     }
 }
