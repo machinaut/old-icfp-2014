@@ -181,4 +181,8 @@ def repl(prompt='lis.py> '):
 
 if __name__ == "__main__":
     for line in fileinput.input():
+        line = line.strip()
+        if not line:
+            continue
+        print("; input line %d: %s" % (fileinput.lineno(), line))
         eval(parse(line))
