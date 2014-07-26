@@ -10,6 +10,14 @@ import sys
 
 main_output = io.StringIO("")
 function_output = io.StringIO("")
+debug_level = 0
+
+################ Debugging
+def debug_comment(out, level, comment):
+    if debug_level >= level:
+        emit(out, "; %s" % comment)
+
+################ Instructions
 
 class Instruction(object):
     def __init__(self, op1=None, op2=None):
@@ -157,7 +165,7 @@ class Function(object):
         self.num_args = num_args
 
 def define_func(name, args, body, env):
-    emit(function_output, "; function %s %s" % (name, to_string(args)))
+    debug_comment(function_output, 1, "function %s %s" % (name, to_string(args)))
     emit(function_output, "%s:" % name)
 
     func = Function(name, len(args))
@@ -210,7 +218,7 @@ def eval_if(test, conseq, alt, env, out):
 
 def eval(x, env=global_env, out=main_output):
     "Evaluate an expression in an environment."
-    emit(out, "; eval(%r)" % x)
+    debug_comment(out, 3, "eval(%r)" % x)
     if isa(x, Symbol):             # variable reference
         s = env.find(x)[x]
         if isa(s, Instruction):
@@ -246,7 +254,7 @@ def eval(x, env=global_env, out=main_output):
         assert(len(x) == 4)
         define_func(x[1], x[2], x[3], env)
     else:                          # (proc exp*)
-        emit(out, "; proc '%s'" % x[0])
+        debug_comment(out, 3, "proc '%s'" % x[0])
         exps = [eval(exp, env, out) for exp in x]
         proc = exps.pop(0)
         if isa(proc, Builtin):
@@ -298,7 +306,10 @@ def emit(output, s):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Compile λ-LISP programs")
     parser.add_argument('source', nargs='?', default='/dev/stdin', help="File to compile (default=stdin)")
+    parser.add_argument('-v', '--verbose', action='count', default=0, help="Increase verbosity")
     args = parser.parse_args()
+
+    debug_level = args.verbose
 
     with open(args.source) as source_file:
         source = source_file.read()
@@ -311,7 +322,7 @@ if __name__ == "__main__":
 
     # Return at the end of the main program,
     if main_output.getvalue():
-        emit(main_output, "; Return from main program")
+        debug_comment(main_output, 2, "Return from main program")
         emit(main_output, Rtn())
 
     print("; main program")
