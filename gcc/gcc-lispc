@@ -259,6 +259,11 @@ if __name__ == "__main__":
             continue
         eval(parse(line))
 
+    # Return at the end of the main program,
+    if main_output.getvalue():
+        emit(main_output, "; Return from main program")
+        emit(main_output, Rtn())
+
     print("; main program")
     print(main_output.getvalue())
     print("; functions")
