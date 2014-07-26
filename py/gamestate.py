@@ -67,7 +67,7 @@ class GameState:
         self.lambdaMan = None
          
 
-    def addGhost(self, loc, vitality=gVital['standard'], dir=direction['up']):
+    def addGhost(self, loc, vitality=gVital['standard'], dir=direction['down']):
         """
         The status of all the ghosts is a list with the status for each ghost.
         The list is in the order of the ghost number, so each ghost always appears
@@ -77,6 +77,8 @@ class GameState:
         1. the ghost's vitality
         2. the ghost's current location, as an (x,y) pair
         3. the ghost's current direction
+
+        At the start of the game, all ghosts and Lambdaman face down
         """
         myGhost = {'vitality': vitality,
                    'location': loc,
@@ -84,7 +86,7 @@ class GameState:
                    }
         self.ghosts.append(myGhost)
 
-    def addLambdaMan(self, loc, dir=direction['up'], vitality=0, lives=3, score=0):
+    def addLambdaMan(self, loc, dir=direction['down'], vitality=0, lives=3, score=0):
         """
         The Lambda-Man status is a 5-tuple consisting of:
         1. Lambda-Man's vitality;
@@ -98,6 +100,8 @@ class GameState:
         * 0: standard mode;
         * n > 0: power pill mode: the number of game ticks remaining while the
         power pill will will be active
+
+        At the start of the game, all ghosts and Lambdaman face down
         """
         self.lambdaMan = {
             'vitality': vitality,
