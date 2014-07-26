@@ -135,7 +135,7 @@ class GameState:
 
     def printMap(self):
         for row in self.board:
-            print row
+            print(row)
 
     def getJSON(self):
         return json.dumps(
