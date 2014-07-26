@@ -21,10 +21,10 @@ class Instruction(object):
     def __repr__(self):
         r = self.name
 
-        if self.op1:
+        if self.op1 is not None:
             r += " " + str(self.op1)
 
-        if self.op2:
+        if self.op2 is not None:
             r += " " + str(self.op2)
 
         return r
@@ -57,6 +57,22 @@ class St(Instruction):
     name = 'ST'
     ops = 2
 
+class Ldf(Instruction):
+    name = 'LDF'
+    ops = 1
+
+class Ap(Instruction):
+    name = 'AP'
+    ops = 1
+
+class Rtn(Instruction):
+    name = 'RTN'
+    ops = 0
+
+class Builtin(object):
+    def __init__(self, instr):
+        self.instr = instr
+
 ################ Symbol, Env classes
 
 Symbol = str
@@ -75,11 +91,11 @@ def add_globals(env):
     import math, operator as op
     env.update(vars(math)) # sin, sqrt, ...
     env.update({
-        '+': Add,
-        '-': Sub,
-        '*': Mul,
-        '/': Div,
-        'not':op.not_,
+        '+': Builtin(Add),
+        '-': Builtin(Sub),
+        '*': Builtin(Mul),
+        '/': Builtin(Div),
+      #'not':op.not_,
       #'>':op.gt, '<':op.lt, '>=':op.ge, '<=':op.le, '=':op.eq, 
       #'equal?':op.eq, 'eq?':op.is_, 'length':len, 'cons':lambda x,y:[x]+y,
       #'car':lambda x:x[0],'cdr':lambda x:x[1:], 'append':op.add,  
@@ -92,13 +108,41 @@ global_env = add_globals(Env())
 
 isa = isinstance
 
+################ Functions
+
+class Function(object):
+    def __init__(self, name, num_args):
+        self.name = name
+        self.num_args = num_args
+
+def define_func(name, args, body, env):
+    print("; function %s %s" % (name, to_string(args)))
+    print("%s:" % name)
+
+    func = Function(name, len(args))
+    env[name] = func
+
+    local_env = Env(outer=env)
+
+    for i, a in enumerate(args):
+        local_env[a] = Ld(0, i)
+
+    # XXX: This only gets us parent frames from the point of function
+    # definition, not calling
+    eval(body, local_env)
+
+    print(Rtn())
+
 ################ eval
 
 def eval(x, env=global_env):
     "Evaluate an expression in an environment."
     print("; eval(%r)" % x)
     if isa(x, Symbol):             # variable reference
-        return env.find(x)[x]
+        s = env.find(x)[x]
+        if isa(s, Instruction):
+            print(s)
+        return s
     elif not isa(x, list):         # constant literal
         print(Ldc(x))
         return
@@ -124,12 +168,19 @@ def eval(x, env=global_env):
     #    for exp in x[1:]:
     #        val = eval(exp, env)
     #    return val
+    elif x[0] == 'defun':           # Function definition
+        # (defun name (a1 a2) (body))
+        assert(len(x) == 4)
+        define_func(x[1], x[2], x[3], env)
     else:                          # (proc exp*)
         print("; proc '%s'" % x[0])
         exps = [eval(exp, env) for exp in x]
         proc = exps.pop(0)
-        if issubclass(proc, Instruction):
-            print(proc())
+        if isa(proc, Builtin):
+            print(proc.instr())
+        elif isa(proc, Function):
+            print(Ldf(proc.name))
+            print(Ap(proc.num_args))
         return
         #return proc(*exps)
 
