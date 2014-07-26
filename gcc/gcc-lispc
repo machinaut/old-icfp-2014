@@ -61,6 +61,22 @@ class Cdr(Instruction):
     name = 'CDR'
     ops = 0
 
+class Ceq(Instruction):
+    name = 'CEQ'
+    ops = 2
+
+class Cgt(Instruction):
+    name = 'CGT'
+    ops = 2
+
+class Cgte(Instruction):
+    name = 'CGTE'
+    ops = 2
+
+class Atom(Instruction):
+    name = 'ATOM'
+    ops = 1
+
 class Ldc(Instruction):
     name = 'LDC'
     ops = 1
@@ -85,6 +101,14 @@ class Rtn(Instruction):
     name = 'RTN'
     ops = 0
 
+class Sel(Instruction):
+    name = 'SEL'
+    ops = 2
+
+class Join(Instruction):
+    name = 'JOIN'
+    ops = 0
+
 class Builtin(object):
     def __init__(self, instr):
         self.instr = instr
@@ -107,13 +131,17 @@ def add_globals(env):
     import math, operator as op
     env.update(vars(math)) # sin, sqrt, ...
     env.update({
-        '+': Builtin(Add),
-        '-': Builtin(Sub),
-        '*': Builtin(Mul),
-        '/': Builtin(Div),
+        '+':    Builtin(Add),
+        '-':    Builtin(Sub),
+        '*':    Builtin(Mul),
+        '/':    Builtin(Div),
+        '==':   Builtin(Ceq),
+        '>':    Builtin(Cgt),
+        '>=':   Builtin(Cgte),
+        'atom': Builtin(Atom),
         'cons': Builtin(Cons),
-        'car': Builtin(Car),
-        'cdr': Builtin(Cdr),
+        'car':  Builtin(Car),
+        'cdr':  Builtin(Cdr),
       #'not':op.not_,
       #'>':op.gt, '<':op.lt, '>=':op.ge, '<=':op.le, '=':op.eq, 
       #'equal?':op.eq, 'eq?':op.is_, 'length':len, 'cons':lambda x,y:[x]+y,
@@ -154,6 +182,38 @@ def define_func(name, args, body, env):
 
 ################ eval
 
+total_if_count = 0
+
+def eval_if(test, conseq, alt, env, out):
+    global total_if_count
+    true_label = "if_true_%d" % total_if_count
+    false_label = "if_false_%d" % total_if_count
+    after_label = "if_after_%d" % total_if_count
+    total_if_count += 1
+
+    # Execute the test condition
+    eval(test, env, out)
+
+    # Jump to true or false case
+    emit(out, Sel(true_label, false_label))
+
+    # After true or false case completion, jump to end
+    emit(out, Ldc(1))
+    emit(out, Sel(after_label, 0))
+
+    # True case, then join back to above
+    emit(out, true_label + ":")
+    eval(conseq, env, out)
+    emit(out, Join())
+
+    # False case, then join back to above
+    emit(out, false_label + ":")
+    eval(alt, env, out)
+    emit(out, Join())
+
+    # When done, jump to next instructions
+    emit(out, after_label + ":")
+
 def eval(x, env=global_env, out=main_output):
     "Evaluate an expression in an environment."
     emit(out, "; eval(%r)" % x)
@@ -168,9 +228,9 @@ def eval(x, env=global_env, out=main_output):
     #elif x[0] == 'quote':          # (quote exp)
     #    (_, exp) = x
     #    return exp
-    #elif x[0] == 'if':             # (if test conseq alt)
-    #    (_, test, conseq, alt) = x
-    #    return eval((conseq if eval(test, env) else alt), env)
+    elif x[0] == 'if':             # (if test conseq alt)
+        (_, test, conseq, alt) = x
+        eval_if(test, conseq, alt, env, out)
     #elif x[0] == 'set!':           # (set! var exp)
     #    (_, var, exp) = x
     #    env.find(var)[var] = eval(exp, env)
