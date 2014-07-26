@@ -5,6 +5,7 @@ the current fruit, if any.
 '''
 import json
 
+
 class GameState:
     # The Ghosts' vitality is an enumeration:
     gVital = {'standard': 0,
@@ -17,7 +18,7 @@ class GameState:
                  'right': 1,
                  'down': 2,
                  'left': 3,
-                }
+                 }
     '''
     * 0: Wall (`#`)
     * 1: Empty (`<space>`)
@@ -125,9 +126,12 @@ class GameState:
                     if char in GameState.mapItem:
                         if GameState.mapItem[char] == GameState.tiles['lambdaMan']:
                             self.addLambdaMan((x, y))
+                            row.append(GameState.tiles['empty'])
                         elif GameState.mapItem[char] == GameState.tiles['ghost']:
                             self.addGhost((x, y))
-                        row.append(GameState.mapItem[char])
+                            row.append(GameState.tiles['empty'])
+                        else:
+                            row.append(GameState.mapItem[char])
                     x += 1
                 self.board.append(row)
                 y += 1
