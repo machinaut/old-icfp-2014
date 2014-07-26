@@ -2,40 +2,37 @@
 
 import fileinput
 import re
+import sys
 
-instructions = [
-    'LDC',
-    'LD',
-    'ADD',
-    'SUB',
-    'MUL',
-    'DIV',
-    'CEQ',
-    'CGT',
-    'CGTE',
-    'ATOM',
-    'CONS',
-    'CAR',
-    'CDR',
-    'SEL',
-    'JOIN',
-    'LDF',
-    'AP',
-    'RTN',
-    'DUM',
-    'RAP',
-    'STOP',
-    'TSEL',
-    'TAP',
-    'TRAP',
-    'ST',
-    'DBUG',
-    'BRK',
-]
-# | regexes are non-greedy, they will accept the first
-# match, so they need to be sorted longest to shortest
-# to behave "greedy"
-instructions.sort(key=lambda n: len(n), reverse=True)
+instructions = {
+    'LDC':  {'ops': 1},
+    'LD':   {'ops': 2},
+    'ADD':  {'ops': 0},
+    'SUB':  {'ops': 0},
+    'MUL':  {'ops': 0},
+    'DIV':  {'ops': 0},
+    'CEQ':  {'ops': 0},
+    'CGT':  {'ops': 0},
+    'CGTE': {'ops': 0},
+    'ATOM': {'ops': 0},
+    'CONS': {'ops': 0},
+    'CAR':  {'ops': 0},
+    'CDR':  {'ops': 0},
+    'SEL':  {'ops': 2},
+    'JOIN': {'ops': 0},
+    'LDF':  {'ops': 1},
+    'AP':   {'ops': 1},
+    'RTN':  {'ops': 0},
+    'DUM':  {'ops': 1},
+    'RAP':  {'ops': 1},
+    'STOP': {'ops': 0},
+    'TSEL': {'ops': 2},
+    'TAP':  {'ops': 1},
+    'TRAP': {'ops': 1},
+    'ST':   {'ops': 2},
+    'DBUG': {'ops': 0},
+    'BRK':  {'ops': 0},
+}
 
 patterns = {
     'label': re.compile(r"""
@@ -44,20 +41,59 @@ patterns = {
                 [A-Za-z_]+      # They begin with a letter or underscore
                 [A-Za-z0-9_]*   # Contain letters, underscores, and numbers
             ):                  # They end in a comma
+            (\s*;.*)?           # Maybe a comment
+            $
             """, re.VERBOSE),
     'instr': re.compile(r"""
             ^\s*                # Instructions are preceded only by whitespace
-            (?P<instr>""" +
-                "|".join(instructions) +    # They must be a valid instr name
-            r""")
+            (?P<instr>
+                [A-Z]+          # Instructions are simply all caps letters
+            )
             (\s+                        # Optionally followed by an operand
                 (?P<op1>[A-Za-z0-9_]+)  # Which is a number or label
             )?
             (\s+                        # Optionally followed by a second operand
                 (?P<op2>[A-Za-z0-9_]+)  # Which is a number or label
             )?
+            (\s*;.*)?           # Maybe a comment
+            $
+            """, re.VERBOSE),
+    'empty': re.compile(r"""    # A line with only whitespace or comments
+            ^\s*                # Some whitespace
+            (;.*)?              # Maybe a comment
+            $                   # That's it!
             """, re.VERBOSE),
 }
+
+def verify_instr(line, match):
+    """
+    Verify the instruction found
+
+    Checks that the instruction:
+        1. Is a valid instruction
+        2. Has the correct number of operands
+
+    Exits with an error if the instruction is invalid
+
+    Arguments:
+        line: Line number with instruction
+        match: re match object of instruction
+    """
+    instr = match.group('instr')
+    op1 = match.group('op1')
+    op2 = match.group('op2')
+
+    if instr not in instructions:
+        print("error:%d:Unknown instruction '%s'" % (line, instr), file=sys.stderr)
+        exit(1)
+
+    if instructions[instr]['ops'] >= 1 and not op1:
+        print("error:%d:Missing required operand 1" % line, file=sys.stderr)
+        exit(1)
+
+    if instructions[instr]['ops'] >= 2 and not op2:
+        print("error:%d:Missing required operand 2" % line, file=sys.stderr)
+        exit(1)
 
 if __name__ == "__main__":
     addr = 0
@@ -71,7 +107,15 @@ if __name__ == "__main__":
 
         instr = re.match(patterns['instr'], line)
         if instr:
+            verify_instr(fileinput.lineno(), instr)
             addr += 1
+
+        empty = re.match(patterns['empty'], line)
+
+        if not label and not instr and not empty:
+            print("error:%d:Malformed line" % fileinput.lineno(),
+                  file=sys.stderr)
+            exit(1)
 
     # Pass 2: replace all references
     for line in fileinput.input():
