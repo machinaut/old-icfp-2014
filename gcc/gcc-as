@@ -49,13 +49,21 @@ patterns = {
             ^\s*                # Instructions are preceded only by whitespace
             (?P<instr>""" +
                 "|".join(instructions) +    # They must be a valid instr name
-            ")", re.VERBOSE),
+            r""")
+            (\s+                        # Optionally followed by an operand
+                (?P<op1>[A-Za-z0-9_]+)  # Which is a number or label
+            )?
+            (\s+                        # Optionally followed by a second operand
+                (?P<op2>[A-Za-z0-9_]+)  # Which is a number or label
+            )?
+            """, re.VERBOSE),
 }
 
 if __name__ == "__main__":
     addr = 0
     labels = {}
 
+    # Pass 1: find all labels and their address
     for line in fileinput.input():
         label = re.match(patterns['label'], line)
         if label:
@@ -65,4 +73,27 @@ if __name__ == "__main__":
         if instr:
             addr += 1
 
-    print(labels)
+    # Pass 2: replace all references
+    for line in fileinput.input():
+        match = re.match(patterns['instr'], line)
+        if match:
+            instr = match.group('instr')
+            op1 = match.group('op1')
+            op2 = match.group('op2')
+
+            print(instr, end="")
+
+            if op1:
+                if op1 in labels:
+                    val = labels[op1]
+                else:
+                    val = op1
+                print("\t%s" % val, end="")
+            if op2:
+                if op2 in labels:
+                    val = labels[op2]
+                else:
+                    val = op2
+                print("\t%s" % val, end="")
+
+            print("")
