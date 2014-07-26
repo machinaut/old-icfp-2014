@@ -142,13 +142,7 @@ def add_globals(env):
         'cons': Builtin(Cons),
         'car':  Builtin(Car),
         'cdr':  Builtin(Cdr),
-      #'not':op.not_,
-      #'>':op.gt, '<':op.lt, '>=':op.ge, '<=':op.le, '=':op.eq, 
-      #'equal?':op.eq, 'eq?':op.is_, 'length':len, 'cons':lambda x,y:[x]+y,
-      #'car':lambda x:x[0],'cdr':lambda x:x[1:], 'append':op.add,  
-      #'list':lambda *x:list(x), 'list?': lambda x:isa(x,list), 
-      #'null?':lambda x:x==[], 'symbol?':lambda x: isa(x, Symbol)
-      })
+    })
     return env
 
 global_env = add_globals(Env())
@@ -261,7 +255,6 @@ def eval(x, env=global_env, out=main_output):
             emit(out, Ldf(proc.name))
             emit(out, Ap(proc.num_args))
         return
-        #return proc(*exps)
 
 ################ parse, read, and user interaction
 
