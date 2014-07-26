@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+
+import fileinput
+import re
+
+instructions = [
+    'LDC',
+    'LD',
+    'ADD',
+    'SUB',
+    'MUL',
+    'DIV',
+    'CEQ',
+    'CGT',
+    'CGTE',
+    'ATOM',
+    'CONS',
+    'CAR',
+    'CDR',
+    'SEL',
+    'JOIN',
+    'LDF',
+    'AP',
+    'RTN',
+    'DUM',
+    'RAP',
+    'STOP',
+    'TSEL',
+    'TAP',
+    'TRAP',
+    'ST',
+    'DBUG',
+    'BRK',
+]
+# | regexes are non-greedy, they will accept the first
+# match, so they need to be sorted longest to shortest
+# to behave "greedy"
+instructions.sort(key=lambda n: len(n), reverse=True)
+
+patterns = {
+    'label': re.compile(r"""
+            ^                   # Labels begin at column 0, no whitespace
+            (?P<label>
+                [A-Za-z_]+      # They begin with a letter or underscore
+                [A-Za-z0-9_]*   # Contain letters, underscores, and numbers
+            ):                  # They end in a comma
+            """, re.VERBOSE),
+    'instr': re.compile(r"""
+            ^\s*                # Instructions are preceded only by whitespace
+            (?P<instr>""" +
+                "|".join(instructions) +    # They must be a valid instr name
+            ")", re.VERBOSE),
+}
+
+if __name__ == "__main__":
+    addr = 0
+    labels = {}
+
+    for line in fileinput.input():
+        label = re.match(patterns['label'], line)
+        if label:
+            labels[label.group('label')] = addr
+
+        instr = re.match(patterns['instr'], line)
+        if instr:
+            addr += 1
+
+    print(labels)
