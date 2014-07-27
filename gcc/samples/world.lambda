@@ -1,0 +1,36 @@
+# world.lambda - utilities for managing input
+
+# get n-th element of a tuple
+(defun getN (t n)
+    (if (== n 0)
+        (car t)
+        (getN (cdr t) (- n 1))))
+
+# Parse out basic world tuple
+# World[0] - Map
+(defun worldMap (world) (getN world 0))
+# World[1] - Status of Lambda-Man
+(defun worldLmn (world) (getN world 1))
+# World[2] - Status of Ghosts
+(defun worldGst (world) (getN world 2))
+# World[3] - Status of Fruit
+(defun worldFrt (world) (getN world 3))
+
+# TODO parse out map
+#  yenik already wrote a getMap (x,y) in assembly, just port that?
+
+# Parse out Status of Lambda-Man
+# Lambda-Man[0] - Vitality
+(defun worldLmnVit (world) (getN (worldLmn world) 0))
+# Lambda-Man[1] - Location
+(defun worldLmnLoc (world) (getN (worldLmn world) 1))
+# Lambda-Man[2] - Direction
+(defun worldLmnDir (world) (getN (worldLmn world) 2))
+# Lambda-Man[3] - Lives remaining
+(defun worldLmnLiv (world) (getN (worldLmn world) 3))
+# Lambda-Man[4] - Score
+(defun worldLmnScr (world) (getN (worldLmn world) 4))
+
+# TODO parse out ghosts by ghost number
+
+# TODO parse out present fruit
