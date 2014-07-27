@@ -1,0 +1,4 @@
+(defun addN (n)
+    (lambda (a) (+ a n)))
+
+(funcall (addN 2) 1)

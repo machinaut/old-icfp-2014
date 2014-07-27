@@ -9,33 +9,30 @@ import io
 import sys
 
 class Program(object):
-    MAIN = 1
-    FUNCTION = 2
-
     def __init__(self, debug_level):
         self.total_if_count = 0
+        self.total_lambda_count = 0
         self.debug_level = debug_level
 
-        self.main_output = io.StringIO("")
-        self.function_output = io.StringIO("")
+        self.regions = []
+
+    def new_region(self):
+        index = len(self.regions)
+        region = io.StringIO("")
+        self.regions.append(region)
+        return index
 
     def output(self, region, s):
-        if region == self.MAIN:
-            f = self.main_output
-        elif region == self.FUNCTION:
-            f = self.function_output
-
-        print(s, file=f)
+        print(s, file=self.regions[region])
 
     def debug_comment(self, out, level, comment):
         if self.debug_level >= level:
             self.output(out, "; %s" % comment)
 
     def emit(self):
-        print("; main program")
-        print(self.main_output.getvalue())
-        print("; functions")
-        print(self.function_output.getvalue())
+        for i, region in enumerate(self.regions):
+            print("; region %d" % i)
+            print(region.getvalue())
 
 ################ Instructions
 
@@ -158,15 +155,21 @@ class Builtin(object):
 ################ Symbol, Env classes
 
 Symbol = str
+EnvRef = int    # Index into environment
 
 class Env(dict):
     "An environment: a dict of {'var':val} pairs, with an outer Env."
     def __init__(self, outer=None):
         self.outer = outer
 
-    def find(self, var):
+    def find(self, var, depth=0):
         "Find the innermost Env where var appears."
-        return self if var in self else self.outer.find(var)
+        if var in self:
+            return self, depth
+        elif self.outer:
+            return self.outer.find(var, depth+1)
+        else:
+            raise KeyError("Undefined reference to '%s'" % var)
 
 def add_globals(env):
     env.update({
@@ -210,7 +213,7 @@ class Label(object):
 ################ Expressions
 
 class Expression(object):
-    def __init__(self, expression, program, env=global_env, region=Program.MAIN):
+    def __init__(self, expression, program, region, env=global_env):
         self.program = program
         self.expression = expression
         self.env = env
@@ -224,7 +227,7 @@ class Expression(object):
         if region is None:
             region = self.region
 
-        return Expression(exp, self.program, env, region)
+        return Expression(exp, self.program, region, env)
 
     def instruction(self, instr, op1=None, op2=None, region=None):
         if region is None:
@@ -238,23 +241,35 @@ class Expression(object):
 
         return Label(name, self.program, region)
 
-    def define_func(self, name, args, body):
-        self.program.debug_comment(Program.FUNCTION, 1, "function %s %s" % (name, to_string(args)))
-        self.label(name, region=Program.FUNCTION).emit()
+    def define_func(self, given_name, args, body):
+        name = given_name
+        if not given_name:
+            name = "lambda_%d" % self.program.total_lambda_count
+            self.program.total_lambda_count += 1
+
+        # Allocate space to emit the function
+        region = self.program.new_region()
+
+        self.program.debug_comment(region, 1, "function %s %s" % (name, to_string(args)))
+        self.label(name, region=region).emit()
 
         func = Function(name, len(args))
-        self.env[name] = func
+
+        if given_name:
+            self.env[given_name] = func
 
         local_env = Env(outer=self.env)
 
+        # Assign space in environment
         for i, a in enumerate(args):
-            local_env[a] = self.instruction(Ld, 0, i, region=Program.FUNCTION)
+            local_env[a] = EnvRef(i)
 
-        # This gives us parent frames from the point of function
-        body = self.subexpression(body, env=local_env, region=Program.FUNCTION)
+        # This gives us parent frames from the point of function definition
+        body = self.subexpression(body, env=local_env, region=region)
         body.emit()
 
-        self.instruction(Rtn, region=Program.FUNCTION).emit()
+        self.instruction(Rtn, region=region).emit()
+        return func
 
     def emit_if(self, test, conseq, alt):
         true_label = self.label("if_true_%d" % self.program.total_if_count)
@@ -293,10 +308,12 @@ class Expression(object):
         x = self.expression
         self.program.debug_comment(self.region, 3, "emit(%r)" % x)
         if isa(x, Symbol):             # variable reference
-            s = self.env.find(x)[x]
-            if isa(s, Instruction):
-                s.emit()
-            return s
+            env, depth = self.env.find(x)
+            sym = env[x]
+            self.program.debug_comment(self.region, 4, "Symbol %s = %s" % (x, sym))
+            if isa(sym, EnvRef):
+                self.instruction(Ld, depth, sym).emit()
+            return sym
         elif not isa(x, list):         # constant literal
             self.instruction(Ldc, x).emit()
             return
@@ -312,9 +329,10 @@ class Expression(object):
         #    eval(exp, env)
         #    print(St(0, 0))
         #    return
-        #elif x[0] == 'lambda':         # (lambda (var*) exp)
-        #    (_, vars, exp) = x
-        #    return lambda *args: eval(exp, Env(vars, args, env))
+        elif x[0] == 'lambda':          # (lambda (var*) exp)
+            (_, args, exp) = x
+            func = self.define_func(None, args, exp)
+            self.instruction(Ldf, func.name).emit()
         #elif x[0] == 'begin':          # (begin exp*)
         #    for exp in x[1:]:
         #        val = eval(exp, env)
@@ -324,6 +342,15 @@ class Expression(object):
             assert(len(x) == 4)
             (_, name, args, body) = x
             self.define_func(name, args, body)
+        elif x[0] == 'funcall':         # Function call
+            (_, func, *args) = x
+            self.program.debug_comment(self.region, 3, "func '%s' args '%s'" % (func, args))
+            # Emit arguments
+            [self.subexpression(exp).emit() for exp in args]
+            # Emit function
+            self.subexpression(func).emit()
+            # Jump to function
+            self.instruction(Ap, len(args)).emit()
         else:                          # (proc exp*)
             self.program.debug_comment(self.region, 3, "proc '%s'" % x[0])
             exps = [self.subexpression(exp).emit() for exp in x]
@@ -391,16 +418,18 @@ if __name__ == "__main__":
         source = source_file.read()
 
     program = Program(args.verbose)
+    # Region for main program
+    region = program.new_region()
     tokenized = tokenize(source)
 
     while tokenized:
         e = read_from(tokenized)
-        expression = Expression(e, program)
+        expression = Expression(e, program, region)
         expression.emit()
 
     # Return at the end of the main program,
-    if program.main_output.getvalue():
-        program.debug_comment(Program.MAIN, 2, "Return from main program")
-        Rtn(program, Program.MAIN).emit()
+    if program.regions[region].getvalue():
+        program.debug_comment(region, 2, "Return from main program")
+        Rtn(program, region).emit()
 
     program.emit()
