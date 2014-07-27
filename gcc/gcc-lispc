@@ -144,6 +144,10 @@ class Sel(Instruction):
     name = 'SEL'
     ops = 2
 
+class Tsel(Instruction):
+    name = 'TSEL'
+    ops = 2
+
 class Join(Instruction):
     name = 'JOIN'
     ops = 0
@@ -286,7 +290,7 @@ class Expression(object):
 
         # After true or false case completion, jump to end
         self.instruction(Ldc, 1).emit()
-        self.instruction(Sel, after_label, 0).emit()
+        self.instruction(Tsel, after_label, 0).emit()
 
         # True case, then join back to above
         true_label.emit()
