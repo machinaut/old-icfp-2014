@@ -23,7 +23,7 @@ class LambdaManCPU:
         self.heap = []      # Data heap
 
         #Initialization
-        self.environ.append({'size': None,
+        self.environ.append({'FRAME_SIZE': None,
                              'FRAME_PARENT': None,
                              'FRAME_VALUE': [],
                              'FRAME_TAG': 'TAG_ROOT'})
@@ -32,13 +32,26 @@ class LambdaManCPU:
         #self.machine_stop = False
 
         #Instruction Closures
-        self.instructions = {'ADD': self.add,
+        self.instructions = {'LDC': self.ldc,
+                             'LD':  self.ld,
+                             'ADD': self.add,
                              'SUB': self.sub,
-                             'LDC': self.ldc,
+                             'MUL': self.mul,
+                             'DIV': self.div,
+                             'CEQ': self.ceq,
+                             'CGTE': self.cgte,
+                             'CGT': self.cgt,
+                             'CONS': self.cons,
+                             'CAR': self.car,
+                             'CDR': self.cdr,
+                             'SEL': self.sel,
+                             'JOIN': self.join,
                              'LDF': self.ldf,
                              'AP':  self.ap,
                              'RTN': self.rtn,
-                             'LD':  self.ld,
+                             'DUM': self.dum,
+                             'RAP': self.rap,
+                             'STOP': self.stop,
                              }
     # Instruction Executors
     def ldc(self, args):
@@ -54,6 +67,41 @@ class LambdaManCPU:
           %c := %c+1
         """
         self.data.append({'tag': 'TAG_INT', 'data': args[0]})
+        self.c += 1
+
+    def ld(self, args):
+        """
+        LD - load from environment
+
+        Synopsis: load a value from the environment;
+                  push it onto the data stack
+        Syntax:  LD $n $i
+        Example: LD 0 1
+        Effect:
+          $fp := %e
+          while $n > 0 do            ; follow chain of frames to get n'th frame
+          begin
+            $fp := FRAME_PARENT($fp)
+            $n := $n-1
+          end
+          if FRAME_TAG($fp) == TAG_DUM then FAULT(FRAME_MISMATCH)
+          $v := FRAME_VALUE($fp, $i) ; i'th element of frame
+          %s := PUSH($v,%s)          ; push onto the data stack
+          %c := %c+1
+        Notes:
+          Values within a frame are indexed from 0.
+        """
+        n = args[0]
+        i = args[1]
+        fp = self.e
+        while n > 0:            # follow chain of frames to get n'th frame
+            fp = self.frame_parent(fp)
+            n = n-1
+        if self.frame_tag(fp) == 'TAG_DUM':
+            self.fault('FRAME_MISMATCH')
+        v = self.frame_value(fp, i)     # i'th element of frame
+        self.data.append(v)             # push onto the data stack
+        self.s = len(self.data)
         self.c += 1
 
     def add(self, args):
@@ -85,8 +133,327 @@ class LambdaManCPU:
         self.c += 1
 
     def sub(self, args):
-        print('subtraction')
+        """
+        SUB - integer subtraction
+
+        Synopsis: pop two integers off the data stack;
+                  push the result of subtracting one from the other
+        Syntax: SUB
+        Effect:
+          $y,%s := POP(%s)
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_INT then FAULT(TAG_MISMATCH)
+          if TAG($y) != TAG_INT then FAULT(TAG_MISMATCH)
+          $z := $x - $y
+          %s := PUSH(SET_TAG(TAG_INT,$z),%s)
+          %c := %c+1
+        """
+        y = self.data.pop()
+        x = self.data.pop()
+        if x['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if y['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        z = x['data'] - y['data']
+        self.data.append({'tag': 'TAG_INT', 'data': z})
+        self.s = len(self.data)
         self.c += 1
+
+    def mul(self, args):
+        """
+        MUL - integer multiplication
+
+        Synopsis: pop two integers off the data stack;
+                  push their product
+        Syntax: MUL
+        Effect:
+          $y,%s := POP(%s)
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_INT then FAULT(TAG_MISMATCH)
+          if TAG($y) != TAG_INT then FAULT(TAG_MISMATCH)
+          $z := $x * $y
+          %s := PUSH(SET_TAG(TAG_INT,$z),%s)
+          %c := %c+1
+        """
+        y = self.data.pop()
+        x = self.data.pop()
+        if x['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if y['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        z = x['data'] * y['data']
+        self.data.append({'tag': 'TAG_INT', 'data': z})
+        self.s = len(self.data)
+        self.c += 1
+
+    def div(self, args):
+        """
+        DIV - integer division
+
+        Synopsis: pop two integers off the data stack;
+                  push the result of the integer division of one of the other
+                  (integer division rounds down towards negative infinity)
+        Syntax: DIV
+        Effect:
+          $y,%s := POP(%s)
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_INT then FAULT(TAG_MISMATCH)
+          if TAG($y) != TAG_INT then FAULT(TAG_MISMATCH)
+          $z := $x / $y
+          %s := PUSH(SET_TAG(TAG_INT,$z),%s)
+          %c := %c+1
+        """
+        y = self.data.pop()
+        x = self.data.pop()
+        if x['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if y['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        z = x['data'] // y['data']
+        self.data.append({'tag': 'TAG_INT', 'data': z})
+        self.s = len(self.data)
+        self.c += 1
+
+    def ceq(self, args):
+        """
+        CEQ - compare equal
+
+        Synopsis: pop two integers off the data stack;
+                  test if they are equal;
+                  push the result of the test
+        Syntax: CEQ
+        Effect:
+          $y,%s := POP(%s)
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_INT then FAULT(TAG_MISMATCH)
+          if TAG($y) != TAG_INT then FAULT(TAG_MISMATCH)
+          if $x == $y then
+            $z := 1
+          else
+            $z := 0
+          %s := PUSH(SET_TAG(TAG_INT,$z),%s)
+          %c := %c+1
+        """
+        y = self.data.pop()
+        x = self.data.pop()
+        if x['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if y['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if x['data'] == y['data']:
+            z = 1
+        else:
+            z = 0
+        self.data.append({'tag': 'TAG_INT', 'data': z})
+        self.s = len(self.data)
+        self.c += 1
+
+    def cgt(self, args):
+        """
+        CGT - compare greater than
+
+        Synopsis: pop two integers off the data stack;
+                  test if the first is strictly greater than the second;
+                  push the result of the test
+        Syntax: CGT
+        Effect:
+          $y,%s := POP(%s)
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_INT then FAULT(TAG_MISMATCH)
+          if TAG($y) != TAG_INT then FAULT(TAG_MISMATCH)
+          if $x > $y then
+            $z := 1
+          else
+            $z := 0
+          %s := PUSH(SET_TAG(TAG_INT,$z),%s)
+          %c := %c+1
+        """
+        y = self.data.pop()
+        x = self.data.pop()
+        if x['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if y['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if x['data'] > y['data']:
+            z = 1
+        else:
+            z = 0
+        self.data.append({'tag': 'TAG_INT', 'data': z})
+        self.s = len(self.data)
+        self.c += 1
+
+    def cgte(self, args):
+        """
+        CGTE - compare greater than or equal
+
+        Synopsis: pop two integers off the data stack;
+                  test if the first is greater than or equal to the second;
+                  push the result of the test
+        Syntax: CGTE
+        Effect:
+          $y,%s := POP(%s)
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_INT then FAULT(TAG_MISMATCH)
+          if TAG($y) != TAG_INT then FAULT(TAG_MISMATCH)
+          if $x >= $y then
+            $z := 1
+          else
+            $z := 0
+          %s := PUSH(SET_TAG(TAG_INT,$z),%s)
+          %c := %c+1
+        """
+        y = self.data.pop()
+        x = self.data.pop()
+        if x['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if y['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        if x['data'] >= y['data']:
+            z = 1
+        else:
+            z = 0
+        self.data.append({'tag': 'TAG_INT', 'data': z})
+        self.s = len(self.data)
+        self.c += 1
+
+    def atom(self, args):
+        """
+        ATOM - test if value is an integer
+
+        Synopsis: pop a value off the data stack;
+                  test the value tag to see if it is an int;
+                  push the result of the test
+        Syntax: ATOM
+        Effect:
+          $x,%s := POP(%s)
+          if TAG($x) == TAG_INT then
+            $y := 1
+          else
+            $y := 0
+          %s := PUSH(SET_TAG(TAG_INT,$y),%s)
+          %c := %c+1
+        """
+        x = self.data.pop()
+        if x['tag'] == 'TAG_INT':
+            y = 1
+        else:
+            y = 0
+        self.data.append({'tag': 'TAG_INT', 'data': y})
+        self.s = len(self.data)
+        self.c += 1
+
+    def cons(self, _):
+        """
+        CONS - allocate a CONS cell
+
+        Synopsis: pop two values off the data stack;
+                  allocate a fresh CONS cell;
+                  fill it with the two values;
+                  push the pointer to the CONS cell
+        Syntax: CONS
+        Effect:
+          $y,%s := POP(%s)
+          $x,%s := POP(%s)
+          $z := ALLOC_CONS($x,$y)
+          %s := PUSH(SET_TAG(TAG_CONS,$z),%s)
+          %c := %c+1
+        """
+        y = self.data.pop()
+        x = self.data.pop()
+        z = self.alloc_cons(x, y)
+        self.data.append({'tag': 'TAG_CONS', 'data': z})
+        self.c += 1
+
+    def car(self, args):
+        """
+        CAR - extract first element from CONS cell
+
+        Synopsis: pop a pointer to a CONS cell off the data stack;
+                  extract the first element of the CONS;
+                  push it onto the data stack
+        Syntax: CAR
+        Effect:
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_CONS then FAULT(TAG_MISMATCH)
+          $y := CAR($x)
+          %s := PUSH($y,%s)
+          %c := %c+1
+        """
+        x = self.data.pop()
+        if x['tag'] != 'TAG_CONS':
+            self.fault('TAG_MISMATCH')
+        y = self.heap[x]['data'][0]
+        self.data.append(y)
+        self.c += 1
+
+    def cdr(self, args):
+        """
+        CDR - extract second element from CONS cell
+
+        Synopsis: pop a pointer to a CONS cell off the data stack;
+                  extract the second element of the CONS;
+                  push it onto the data stack
+        Syntax: CDR
+        Effect:
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_CONS then FAULT(TAG_MISMATCH)
+          $y := CDR($x)
+          %s := PUSH($y,%s)
+          %c := %c+1
+        """
+        x = self.data.pop()
+        if x['tag'] != 'TAG_CONS':
+            self.fault('TAG_MISMATCH')
+        y = self.heap[x]['data'][1]
+        self.data.append(y)
+        self.c += 1
+        self.c += 1
+
+    def sel(self, args):
+        """
+        SEL - conditional branch
+
+        Synopsis: pop an integer off the data stack;
+                  test if it is non-zero;
+                  push the return address to the control stack;
+                  jump to the true address or to the false address
+        Syntax:  SEL $t $f
+        Example: SEL 335 346  ; absolute instruction addresses
+        Effect:
+          $x,%s := POP(%s)
+          if TAG($x) != TAG_INT then FAULT(TAG_MISMATCH)
+          %d := PUSH(SET_TAG(TAG_JOIN,%c+1),%d)   ; save the return address
+          if $x == 0 then
+            %c := $f
+          else
+            %c := $t
+        """
+        t = args[0]
+        f = args[1]
+        x = self.data.pop()
+        if x['tag'] != 'TAG_INT':
+            self.fault('TAG_MISMATCH')
+        self.control.append({'tag': 'TAG_JOIN', 'data': self.c+1})
+        if x['data'] == 0:
+            self.c = f
+        else:
+            self.c = t
+
+    def join(self, args):
+        """
+        JOIN - return from branch
+
+        Synopsis: pop a return address off the control stack, branch to that address
+        Syntax:  JOIN
+        Effect:
+          $x,%d := POP(%d)
+          if TAG($x) != TAG_JOIN then FAULT(CONTROL_MISMATCH)
+          %c := $x
+        """
+        x = self.control.pop()
+        if x['tag'] != 'TAG_JOIN':
+            self.fault('TAG_MISMATCH')
+        self.c = x['data']
 
     def ldf(self, args):
         """
@@ -173,16 +540,11 @@ class LambdaManCPU:
     def fault(self, msg):
         print("system fault error: ", msg)
         self.print_state()
+        self.machine_stop()
 
-    def alloc_frame(self, size):
-        self.environ.append({'size': size, 'FRAME_PARENT': None, 'FRAME_VALUE': [], 'FRAME_TAG': 'TAG_NOT_DUM'})
+    def alloc_frame(self, size, tag='TAG_NOT_DUM', parent=None):
+        self.environ.append({'FRAME_SIZE': size, 'FRAME_PARENT': parent, 'FRAME_VALUE': [], 'FRAME_TAG': tag})
         return len(self.environ)-1
-
-    def car(self, args):
-        self.c += 1
-
-    def cdr(self, args):
-        self.c += 1
 
     def rtn(self, args):
         """
@@ -219,43 +581,111 @@ class LambdaManCPU:
         self.e = y                  # restore environment
         self.c = x['data']          # jump to return address
 
-    def machine_stop(self):
-        raise StopIteration
-
-    def ld(self, args):
+    def dum(self, args):
         """
-        LD - load from environment
+        DUM - create empty environment frame
 
-        Synopsis: load a value from the environment;
-                  push it onto the data stack
-        Syntax:  LD $n $i
-        Example: LD 0 1
+        Synopsis: Prepare an empty frame;
+                  push it onto the environment chain;
+        Syntax:  DUM $n
+        Example: DUM 3      ; size of frame to allocate
         Effect:
-          $fp := %e
-          while $n > 0 do            ; follow chain of frames to get n'th frame
-          begin
-            $fp := FRAME_PARENT($fp)
-            $n := $n-1
-          end
-          if FRAME_TAG($fp) == TAG_DUM then FAULT(FRAME_MISMATCH)
-          $v := FRAME_VALUE($fp, $i) ; i'th element of frame
-          %s := PUSH($v,%s)          ; push onto the data stack
+          $fp := ALLOC_FRAME($n)       ; create a new empty frame of size $n
+          FRAME_PARENT($fp) := %e      ; set its parent frame
+          FRAME_TAG($fp) := TAG_DUM    ; mark the frame as dummy
+          %e := $fp                    ; set it as the new environment frame
           %c := %c+1
         Notes:
-          Values within a frame are indexed from 0.
+          To be used with RAP to fill in the frame body.
         """
         n = args[0]
-        i = args[1]
-        fp = self.e
-        while n > 0:            # follow chain of frames to get n'th frame
-            fp = self.frame_parent(fp)
-            n = n-1
-        if self.frame_tag(fp) == 'TAG_DUM':
-            self.fault('FRAME_MISMATCH')
-        v = self.frame_value(fp, i)     # i'th element of frame
-        self.data.append(v)             # push onto the data stack
-        self.s = len(self.data)
+        fp = self.alloc_frame(n, tag='TAG_DUM', parent=self.e)  # create a frame of size $n
+        self.e = fp                                             # set it as the new environment frame
         self.c += 1
+
+    def rap(self, args):
+        """
+        RAP - recursive environment call function
+
+        Synopsis: pop a pointer to a CLOSURE cell off the data stack;
+                  the current environment frame pointer must point to an empty
+                    frame of size $n;
+                  fill the empty frame's body with $n values from the data stack;
+                  save the parent pointer of the current environment frame
+                     and return address to the control stack;
+                  set the current environment frame pointer to the environment
+                    frame pointer from the CLOSURE cell;
+                  jump to the code address from the CLOSURE cell;
+        Syntax:  RAP $n
+        Example: RAP 3      ; number of arguments to copy
+        Effect:
+          $x,%s := POP(%s)            ; get and examine function closure
+          if TAG($x) != TAG_CLOSURE then FAULT(TAG_MISMATCH)
+          $f := CAR_CLOSURE($x)
+          $fp := CDR_CLOSURE($x)
+          if FRAME_TAG(%e) != TAG_DUM then FAULT(FRAME_MISMATCH)
+          if FRAME_SIZE(%e) != $n then FAULT(FRAME_MISMATCH)
+          if %e != $fp then FAULT(FRAME_MISMATCH)
+          $i := $n-1
+          while $i != -1 do           ; copy n values from the stack into the empty frame in reverse order
+          begin
+            $y,%s := POP(%s)
+            FRAME_VALUE($fp,$i) := $y
+            $i := $i-1
+          end
+          $ep := FRAME_PARENT(%e)
+          %d := PUSH($ep,%d)                    ; save frame pointer
+          %d := PUSH(SET_TAG(TAG_RET,%c+1),%d)  ; save return address
+          FRAME_TAG($fp) := !TAG_DUM            ; mark the frame as normal
+          %e := $fp                             ; establish new environment
+          %c := $f                              ; jump to function
+        """
+        n = args[0]
+        x = self.data.pop()            # get and examine function closure
+        if x['tag'] != 'TAG_CLOSURE':
+            self.fault('TAG_MISMATCH')
+        f = self.heap[x['data']]['address']         # CAR_CLOSURE(x)
+        fp = self.heap[x['data']]['environment']    # CDR_CLOSURE(x)
+
+        # Validate
+        if self.environ[self.e]['FRAME_TAG'] != 'TAG_DUM':
+            self.fault('FRAME_MISMATCH')
+        if self.environ[self.e]['FRAME_SIZE'] != n:
+            self.fault('FRAME_MISMATCH')
+        if self.e != fp:
+            self.fault('FRAME_MISMATCH')
+
+        #Load Data into environment
+        i = n-1
+        while i != -1:           # copy n values from the stack into the empty frame in reverse order
+            y = self.data.pop()
+            self.environ[fp]['FRAME_VALUE'].append(y)   # FRAME_VALUE(fp,i) = y
+            i = i-1
+
+        ep = self.environ[self.e]['FRAME_PARENT']  # FRAME_PARENT(%e)
+
+        self.control.append(self.e)                                 # save frame pointer
+        self.control.append({'tag': 'TAG_RET', 'data': self.c+1})   # PUSH(SET_TAG(TAG_RET,%c+1),%d)  # save return address
+        self.environ[fp]['FRAME_TAG'] = 'TAG_NOT_DUM'               # mark the frame as normal
+        self.e = fp                             # establish new environment
+        self.c = f                              # jump to function
+
+    def stop(self, args):
+        """
+        STOP - terminate co-processor execution
+
+        Synopsis: terminate co-processor execution and signal the main proessor.
+        Syntax:  STOP
+        Effect:
+          MACHINE_STOP
+        Notes:
+          This instruction is no longer part of the standard ABI. The standard ABI
+          calling convention is to use a TAG_STOP control stack entry. See RTN.
+        """
+        self.machine_stop()
+
+    def machine_stop(self):
+        raise StopIteration
 
     def frame_parent(self, frame_ptr):
         return self.environ[frame_ptr]['FRAME_PARENT']
@@ -265,6 +695,10 @@ class LambdaManCPU:
 
     def frame_value(self, frame_ptr, element):
         return self.environ[frame_ptr]['FRAME_VALUE'][element]
+
+    def alloc_cons(self, x1, x2):
+        self.data.append({'data': [x1,x2]})
+        return len(self.environ)-1
 
     def __iter__(self):
         return self
@@ -276,6 +710,8 @@ class LambdaManCPU:
         execute = self.inst[self.c]
         if execute['inst'] in self.instructions:
             self.instructions[execute['inst']](execute['args'])
+        else:
+            self.fault('Unrecognized Instruction')
 
         if self.c >= len(self.inst):
             raise StopIteration
@@ -285,12 +721,15 @@ class LambdaManCPU:
         with open(source) as source_stream:
             for line in source_stream:
                 asm, __, __ = line.rstrip().partition(';')  # Remove comments and newline
-                instruction, __, args = asm.partition(' ')  # Extract the instruction parts
-                args = args.strip().split(' ')  # Extract arguments
-                if args != ['']:
-                    args = list(map(int, args))  # Convert arguments to ints
-                else:
-                    args = []
+
+                # Extract the instruction parts
+                parts = asm.split()
+                instruction = parts[0]
+
+                args = []
+                if len(parts) >= 2:
+                    args = list(map(int, parts[1:len(parts)]))
+
                 self.inst.append({'inst': instruction, 'args': args})
 
     def print_prog(self):
@@ -325,7 +764,13 @@ if __name__ == '__main__':
     cpu.load(args.source)
     cpu.print_prog()
 
+    limit = 100
+    limited = False
+
     cpu.print_state()
     for tick in cpu:
         cpu.print_state()
-
+        if limited:
+            if limit <= 0:
+                break
+            limit -= 1

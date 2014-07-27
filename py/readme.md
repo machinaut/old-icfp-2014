@@ -13,9 +13,23 @@ or
 
 The interpreter currently supports the following commands:
 
- +  LDC
- +  LDF
- +  AP
- +  RTN
- +  LD
- +  ADD
+ + LDC
+ + LD
+ + ADD
+ + SUB
+ + MUL
+ + DIV
+ + CEQ
+ + CGTE
+ + CGT
+ + CONS
+ + CAR
+ + CDR
+ + SEL
+ + JOIN
+ + LDF
+ + AP
+ + RTN
+ + DUM
+ + RAP
+ + STOP
