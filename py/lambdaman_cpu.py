@@ -721,16 +721,16 @@ class LambdaManCPU:
         with open(source) as source_stream:
             for line in source_stream:
                 asm, __, __ = line.rstrip().partition(';')  # Remove comments and newline
+                if asm != '' and not asm.isspace():
+                    # Extract the instruction parts
+                    parts = asm.split()
+                    instruction = parts[0]
 
-                # Extract the instruction parts
-                parts = asm.split()
-                instruction = parts[0]
+                    args = []
+                    if len(parts) >= 2:
+                        args = list(map(int, parts[1:len(parts)]))
 
-                args = []
-                if len(parts) >= 2:
-                    args = list(map(int, parts[1:len(parts)]))
-
-                self.inst.append({'inst': instruction, 'args': args})
+                    self.inst.append({'inst': instruction, 'args': args})
 
     def print_prog(self):
         for line in self.inst:
