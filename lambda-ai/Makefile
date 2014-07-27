@@ -2,7 +2,9 @@ ICFP_BASE := $(CURDIR)/../
 LISPC := $(ICFP_BASE)/gcc/gcc-lispc
 AS := $(ICFP_BASE)/gcc/gcc-as
 
-all: ai.gcc
+all: main.gcc
+
+main.gcc: ai.s asm.S
 
 ai.s: .FORCE
 
@@ -11,6 +13,9 @@ ai.s: .FORCE
 
 %.gcc: %.s
 	$(AS) $< > $@
+
+main.gcc:
+	$(AS) $^ > $@
 
 clean:
 	rm -f *.s *.gcc

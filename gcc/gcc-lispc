@@ -347,23 +347,10 @@ class Expression(object):
         elif x[0] == 'if':             # (if test conseq alt)
             (_, test, conseq, alt) = x
             self.emit_if(test, conseq, alt)
-        #elif x[0] == 'set!':           # (set! var exp)
-        #    (_, var, exp) = x
-        #    env.find(var)[var] = eval(exp, env)
-        #elif x[0] == 'define':         # (define var exp)
-        #    (_, var, exp) = x
-        #    #env[var] = eval(exp, env)
-        #    eval(exp, env)
-        #    print(St(0, 0))
-        #    return
         elif x[0] == 'lambda':          # (lambda (var*) exp)
             (_, args, exp) = x
             func = self.define_func(None, args, exp)
             self.instruction(Ldf, func.name).emit()
-        #elif x[0] == 'begin':          # (begin exp*)
-        #    for exp in x[1:]:
-        #        val = eval(exp, env)
-        #    return val
         elif x[0] == 'defun':           # Function definition
             # (defun name (a1 a2) (body))
             assert(len(x) == 4)
@@ -378,6 +365,16 @@ class Expression(object):
             self.subexpression(func).emit()
             # Jump to function
             self.instruction(Ap, len(args)).emit()
+        elif x[0] == 'asmcall':         # Direct call to label, no lookup
+            (_, label, *args) = x
+            if not isa(label, Symbol):
+                raise TypeError("asmcall label must be a raw symbol")
+            self.program.debug_comment(self.region, 3, "func '%s' args '%s'" % (label, args))
+            # Emit arguments
+            [self.subexpression(exp).emit() for exp in args]
+            # Jump to function
+            self.instruction(Ldf, label).emit()
+            self.instruction(Ap, len(args)).emit()
         else:                          # (proc exp*)
             self.program.debug_comment(self.region, 3, "proc '%s'" % x[0])
             exps = [self.subexpression(exp).emit() for exp in x]
@@ -385,6 +382,9 @@ class Expression(object):
             if isa(proc, Builtin):
                 self.instruction(proc.instr).emit()
             elif isa(proc, Function):
+                if len(exps) != proc.num_args:
+                    raise ValueError("Call to '%s' expected %d arguments, but found %d" % \
+                                        (proc.name, proc.num_args, len(exps)))
                 self.instruction(Ldf, proc.name).emit()
                 self.instruction(Ap, proc.num_args).emit()
             elif proc is not None or exps :

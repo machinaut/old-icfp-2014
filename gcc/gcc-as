@@ -39,7 +39,7 @@ patterns = {
             ^                   # Labels begin at column 0, no whitespace
             (?P<label>
                 [A-Za-z_]+      # They begin with a letter or underscore
-                [A-Za-z0-9_]*   # Contain letters, underscores, and numbers
+                [A-Za-z0-9_-]*  # Contain letters, underscores, hyphens, and numbers
             ):                  # They end in a comma
             (\s*;.*)?           # Maybe a comment
             $
@@ -50,10 +50,10 @@ patterns = {
                 [A-Z]+          # Instructions are simply all caps letters
             )
             (\s+                        # Optionally followed by an operand
-                (?P<op1>[A-Za-z0-9_]+)  # Which is a number or label
+                (?P<op1>[A-Za-z0-9_-]+) # Which is a number or label
             )?
             (\s+                        # Optionally followed by a second operand
-                (?P<op2>[A-Za-z0-9_]+)  # Which is a number or label
+                (?P<op2>[A-Za-z0-9_-]+) # Which is a number or label
             )?
             (\s*;.*)?           # Maybe a comment
             $

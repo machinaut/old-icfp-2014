@@ -1,4 +1,5 @@
 # ai.lambda - top level organization of lambdaman ai
+!include "debug.lambda"
 !include "util.lambda"
 !include "world.lambda"
 
@@ -34,7 +35,7 @@
 # returns a pair of: the new ai state, and the move
 # STEP ALGORITHM: for now just go n % 4 (modulo
 (defun step (state world)
-    (cons (stateIncN (state)) (modulo (stateGetN state) 4)))
+    (cons (stateIncN (state)) (modulo (debug-tag 1000 (stateGetN state)) 4)))
 
 # main function, takes in the world, and the ghost programs
 # returns a pair of:
