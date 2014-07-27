@@ -347,23 +347,10 @@ class Expression(object):
         elif x[0] == 'if':             # (if test conseq alt)
             (_, test, conseq, alt) = x
             self.emit_if(test, conseq, alt)
-        #elif x[0] == 'set!':           # (set! var exp)
-        #    (_, var, exp) = x
-        #    env.find(var)[var] = eval(exp, env)
-        #elif x[0] == 'define':         # (define var exp)
-        #    (_, var, exp) = x
-        #    #env[var] = eval(exp, env)
-        #    eval(exp, env)
-        #    print(St(0, 0))
-        #    return
         elif x[0] == 'lambda':          # (lambda (var*) exp)
             (_, args, exp) = x
             func = self.define_func(None, args, exp)
             self.instruction(Ldf, func.name).emit()
-        #elif x[0] == 'begin':          # (begin exp*)
-        #    for exp in x[1:]:
-        #        val = eval(exp, env)
-        #    return val
         elif x[0] == 'defun':           # Function definition
             # (defun name (a1 a2) (body))
             assert(len(x) == 4)
