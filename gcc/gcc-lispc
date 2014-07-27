@@ -8,19 +8,55 @@ import argparse
 import io
 import sys
 
-main_output = io.StringIO("")
-function_output = io.StringIO("")
+class Program(object):
+    def __init__(self, debug_level):
+        self.total_if_count = 0
+        self.total_lambda_count = 0
+        self.debug_level = debug_level
+
+        self.regions = []
+
+    def new_region(self):
+        index = len(self.regions)
+        region = io.StringIO("")
+        self.regions.append(region)
+        return index
+
+    def output(self, region, s):
+        print(s, file=self.regions[region])
+
+    def debug_comment(self, out, level, comment):
+        if self.debug_level >= level:
+            self.output(out, "; %s" % comment)
+
+    def emit(self):
+        for i, region in enumerate(self.regions):
+            print("; region %d" % i)
+            print(region.getvalue())
+
+################ Instructions
 
 class Instruction(object):
-    def __init__(self, op1=None, op2=None):
+    def __init__(self, program, region, op1=None, op2=None):
+        self.program = program
+        self.region = region
         self.op1 = op1
         self.op2 = op2
 
-        if self.ops < 1 and op1:
-            raise Exception("Too many ops")
+        if op1 is None and op2 is not None:
+            raise ValueError("'%s' got a second operand, but not a first" %
+                                (self.name))
 
-        if self.ops < 2 and op2:
-            raise Exception("Too many ops")
+        if op2 is not None:
+            passed_ops = 2
+        elif op1 is not None:
+            passed_ops = 1
+        else:
+            passed_ops = 0
+
+        if passed_ops != self.ops:
+            raise ValueError("'%s' expected %d ops, found %d" %
+                    (self.name, self.ops, passed_ops))
 
     def __repr__(self):
         r = self.name
@@ -32,6 +68,9 @@ class Instruction(object):
             r += " " + str(self.op2)
 
         return r
+
+    def emit(self):
+        self.program.output(self.region, str(self))
 
 class Add(Instruction):
     name = 'ADD'
@@ -63,19 +102,19 @@ class Cdr(Instruction):
 
 class Ceq(Instruction):
     name = 'CEQ'
-    ops = 2
+    ops = 0
 
 class Cgt(Instruction):
     name = 'CGT'
-    ops = 2
+    ops = 0
 
 class Cgte(Instruction):
     name = 'CGTE'
-    ops = 2
+    ops = 0
 
 class Atom(Instruction):
     name = 'ATOM'
-    ops = 1
+    ops = 0
 
 class Ldc(Instruction):
     name = 'LDC'
@@ -105,6 +144,10 @@ class Sel(Instruction):
     name = 'SEL'
     ops = 2
 
+class Tsel(Instruction):
+    name = 'TSEL'
+    ops = 2
+
 class Join(Instruction):
     name = 'JOIN'
     ops = 0
@@ -116,20 +159,23 @@ class Builtin(object):
 ################ Symbol, Env classes
 
 Symbol = str
+EnvRef = int    # Index into environment
 
 class Env(dict):
     "An environment: a dict of {'var':val} pairs, with an outer Env."
-    def __init__(self, parms=(), args=(), outer=None):
-        self.update(zip(parms,args))
+    def __init__(self, outer=None):
         self.outer = outer
-    def find(self, var):
+
+    def find(self, var, depth=0):
         "Find the innermost Env where var appears."
-        return self if var in self else self.outer.find(var)
+        if var in self:
+            return self, depth
+        elif self.outer:
+            return self.outer.find(var, depth+1)
+        else:
+            raise KeyError("Undefined reference to '%s'" % var)
 
 def add_globals(env):
-    "Add some Scheme standard procedures to an environment."
-    import math, operator as op
-    env.update(vars(math)) # sin, sqrt, ...
     env.update({
         '+':    Builtin(Add),
         '-':    Builtin(Sub),
@@ -149,123 +195,195 @@ global_env = add_globals(Env())
 
 isa = isinstance
 
-################ Functions
+################ Functions, Labels
 
 class Function(object):
     def __init__(self, name, num_args):
         self.name = name
         self.num_args = num_args
 
-def define_func(name, args, body, env):
-    emit(function_output, "; function %s %s" % (name, to_string(args)))
-    emit(function_output, "%s:" % name)
+class Label(object):
+    def __init__(self, name, program, region):
+        self.name = name
+        self.program = program
+        self.region = region
 
-    func = Function(name, len(args))
-    env[name] = func
+    def emit(self):
+        self.program.output(self.region, "%s:" % self.name)
 
-    local_env = Env(outer=env)
+    def __repr__(self):
+        return self.name
 
-    for i, a in enumerate(args):
-        local_env[a] = Ld(0, i)
+################ Expressions
 
-    # XXX: This only gets us parent frames from the point of function
-    # definition, not calling
-    eval(body, local_env, out=function_output)
+class Expression(object):
+    def __init__(self, expression, program, region, env=global_env):
+        self.program = program
+        self.expression = expression
+        self.env = env
+        self.region = region
 
-    emit(function_output, Rtn())
+        self.program.debug_comment(region, 3, "New expression: %s" % expression)
 
-################ eval
+    def subexpression(self, exp, env=None, region=None):
+        if env is None:
+            env = self.env
+        if region is None:
+            region = self.region
 
-total_if_count = 0
+        return Expression(exp, self.program, region, env)
 
-def eval_if(test, conseq, alt, env, out):
-    global total_if_count
-    true_label = "if_true_%d" % total_if_count
-    false_label = "if_false_%d" % total_if_count
-    after_label = "if_after_%d" % total_if_count
-    total_if_count += 1
+    def instruction(self, instr, op1=None, op2=None, region=None):
+        if region is None:
+            region = self.region
 
-    # Execute the test condition
-    eval(test, env, out)
+        return instr(self.program, region, op1=op1, op2=op2)
 
-    # Jump to true or false case
-    emit(out, Sel(true_label, false_label))
+    def label(self, name, region=None):
+        if region is None:
+            region = self.region
 
-    # After true or false case completion, jump to end
-    emit(out, Ldc(1))
-    emit(out, Sel(after_label, 0))
+        return Label(name, self.program, region)
 
-    # True case, then join back to above
-    emit(out, true_label + ":")
-    eval(conseq, env, out)
-    emit(out, Join())
+    def define_func(self, given_name, args, body):
+        name = given_name
+        if not given_name:
+            name = "lambda_%d" % self.program.total_lambda_count
+            self.program.total_lambda_count += 1
 
-    # False case, then join back to above
-    emit(out, false_label + ":")
-    eval(alt, env, out)
-    emit(out, Join())
+        # Allocate space to emit the function
+        region = self.program.new_region()
 
-    # When done, jump to next instructions
-    emit(out, after_label + ":")
+        self.program.debug_comment(region, 1, "function %s %s" % (name, to_string(args)))
+        self.label(name, region=region).emit()
 
-def eval(x, env=global_env, out=main_output):
-    "Evaluate an expression in an environment."
-    emit(out, "; eval(%r)" % x)
-    if isa(x, Symbol):             # variable reference
-        s = env.find(x)[x]
-        if isa(s, Instruction):
-            emit(out, s)
-        return s
-    elif not isa(x, list):         # constant literal
-        emit(out, Ldc(x))
-        return
-    #elif x[0] == 'quote':          # (quote exp)
-    #    (_, exp) = x
-    #    return exp
-    elif x[0] == 'if':             # (if test conseq alt)
-        (_, test, conseq, alt) = x
-        eval_if(test, conseq, alt, env, out)
-    #elif x[0] == 'set!':           # (set! var exp)
-    #    (_, var, exp) = x
-    #    env.find(var)[var] = eval(exp, env)
-    #elif x[0] == 'define':         # (define var exp)
-    #    (_, var, exp) = x
-    #    #env[var] = eval(exp, env)
-    #    eval(exp, env)
-    #    print(St(0, 0))
-    #    return
-    #elif x[0] == 'lambda':         # (lambda (var*) exp)
-    #    (_, vars, exp) = x
-    #    return lambda *args: eval(exp, Env(vars, args, env))
-    #elif x[0] == 'begin':          # (begin exp*)
-    #    for exp in x[1:]:
-    #        val = eval(exp, env)
-    #    return val
-    elif x[0] == 'defun':           # Function definition
-        # (defun name (a1 a2) (body))
-        assert(len(x) == 4)
-        define_func(x[1], x[2], x[3], env)
-    else:                          # (proc exp*)
-        emit(out, "; proc '%s'" % x[0])
-        exps = [eval(exp, env, out) for exp in x]
-        proc = exps.pop(0)
-        if isa(proc, Builtin):
-            emit(out, proc.instr())
-        elif isa(proc, Function):
-            emit(out, Ldf(proc.name))
-            emit(out, Ap(proc.num_args))
-        return
+        func = Function(name, len(args))
 
-################ parse, read, and user interaction
+        if given_name:
+            self.env[given_name] = func
+
+        local_env = Env(outer=self.env)
+
+        # Assign space in environment
+        for i, a in enumerate(args):
+            local_env[a] = EnvRef(i)
+
+        # This gives us parent frames from the point of function definition
+        body = self.subexpression(body, env=local_env, region=region)
+        body.emit()
+
+        self.instruction(Rtn, region=region).emit()
+        return func
+
+    def emit_if(self, test, conseq, alt):
+        true_label = self.label("if_true_%d" % self.program.total_if_count)
+        false_label = self.label("if_false_%d" % self.program.total_if_count)
+        after_label = self.label("if_after_%d" % self.program.total_if_count)
+        self.program.total_if_count += 1
+
+        # Execute the test condition
+        test = self.subexpression(test)
+        test.emit()
+
+        # Jump to true or false case
+        self.instruction(Sel, true_label, false_label).emit()
+
+        # After true or false case completion, jump to end
+        self.instruction(Ldc, 1).emit()
+        self.instruction(Tsel, after_label, 0).emit()
+
+        # True case, then join back to above
+        true_label.emit()
+        conseq = self.subexpression(conseq)
+        conseq.emit()
+        self.instruction(Join).emit()
+
+        # False case, then join back to above
+        false_label.emit()
+        alt = self.subexpression(alt)
+        alt.emit()
+        self.instruction(Join).emit()
+
+        # When done, jump to next instructions
+        after_label.emit()
+
+    def emit(self):
+        "Evaluate an expression in an environment."
+        x = self.expression
+        self.program.debug_comment(self.region, 3, "emit(%r)" % x)
+        if isa(x, Symbol):             # variable reference
+            env, depth = self.env.find(x)
+            sym = env[x]
+            self.program.debug_comment(self.region, 4, "Symbol %s = %s" % (x, sym))
+            if isa(sym, EnvRef):
+                self.instruction(Ld, depth, sym).emit()
+            return sym
+        elif not isa(x, list):         # constant literal
+            self.instruction(Ldc, x).emit()
+            return
+        elif x[0] == 'if':             # (if test conseq alt)
+            (_, test, conseq, alt) = x
+            self.emit_if(test, conseq, alt)
+        #elif x[0] == 'set!':           # (set! var exp)
+        #    (_, var, exp) = x
+        #    env.find(var)[var] = eval(exp, env)
+        #elif x[0] == 'define':         # (define var exp)
+        #    (_, var, exp) = x
+        #    #env[var] = eval(exp, env)
+        #    eval(exp, env)
+        #    print(St(0, 0))
+        #    return
+        elif x[0] == 'lambda':          # (lambda (var*) exp)
+            (_, args, exp) = x
+            func = self.define_func(None, args, exp)
+            self.instruction(Ldf, func.name).emit()
+        #elif x[0] == 'begin':          # (begin exp*)
+        #    for exp in x[1:]:
+        #        val = eval(exp, env)
+        #    return val
+        elif x[0] == 'defun':           # Function definition
+            # (defun name (a1 a2) (body))
+            assert(len(x) == 4)
+            (_, name, args, body) = x
+            self.define_func(name, args, body)
+        elif x[0] == 'funcall':         # Function call
+            (_, func, *args) = x
+            self.program.debug_comment(self.region, 3, "func '%s' args '%s'" % (func, args))
+            # Emit arguments
+            [self.subexpression(exp).emit() for exp in args]
+            # Emit function
+            self.subexpression(func).emit()
+            # Jump to function
+            self.instruction(Ap, len(args)).emit()
+        else:                          # (proc exp*)
+            self.program.debug_comment(self.region, 3, "proc '%s'" % x[0])
+            exps = [self.subexpression(exp).emit() for exp in x]
+            proc = exps.pop(0)
+            if isa(proc, Builtin):
+                self.instruction(proc.instr).emit()
+            elif isa(proc, Function):
+                self.instruction(Ldf, proc.name).emit()
+                self.instruction(Ap, proc.num_args).emit()
+            elif proc is not None or exps :
+                # A simple expression like ((exp)) will be emitted without
+                # returning a proc, which is fine, but multiple exps in
+                # one exp is not valid ((exp) (exp))
+                raise ValueError("Invalid proc '%s' in exp %r" % (proc, x))
+
+################ read, and user interaction
 
 def read(s):
     "Read a Scheme expression from a string."
     return read_from(tokenize(s))
 
-parse = read
-
 def tokenize(s):
     "Convert a string into a list of tokens."
+    news = []
+    for line in s.split('\n'):
+        if len(line) == 0: continue
+        if line[0] == '#': continue # pass on comments
+        news.append(line)
+    s = ''.join(news)
     return s.replace('(',' ( ').replace(')',' ) ').split()
 
 def read_from(tokens):
@@ -288,43 +406,35 @@ def atom(token):
     "Numbers become numbers; every other token is a symbol."
     try: return int(token)
     except ValueError:
-        try: return float(token)
-        except ValueError:
-            return Symbol(token)
+        return Symbol(token)
 
 def to_string(exp):
     "Convert a Python object back into a Lisp-readable string."
     return '('+' '.join(map(to_string, exp))+')' if isa(exp, list) else str(exp)
 
-def emit(output, s):
-    print(s, file=output)
-
-def repl(prompt='lis.py> '):
-    "A prompt-read-eval-print loop."
-    while True:
-        val = eval(parse(raw_input(prompt)))
-        if val is not None: print(to_string(val))
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Compile λ-LISP programs")
     parser.add_argument('source', nargs='?', default='/dev/stdin', help="File to compile (default=stdin)")
+    parser.add_argument('-v', '--verbose', action='count', default=0, help="Increase verbosity")
     args = parser.parse_args()
 
     with open(args.source) as source_file:
         source = source_file.read()
 
+    program = Program(args.verbose)
+    # Region for main program
+    region = program.new_region()
     tokenized = tokenize(source)
 
-    while tokenized:
-        expression = read_from(tokenized)
-        eval(expression)
+    try:
+        while tokenized:
+            e = read_from(tokenized)
+            expression = Expression(e, program, region)
+            expression.emit()
 
-    # Return at the end of the main program,
-    if main_output.getvalue():
-        emit(main_output, "; Return from main program")
-        emit(main_output, Rtn())
-
-    print("; main program")
-    print(main_output.getvalue())
-    print("; functions")
-    print(function_output.getvalue())
+        # Return at the end of the main program,
+        if program.regions[region].getvalue():
+            program.debug_comment(region, 2, "Return from main program")
+            Rtn(program, region).emit()
+    finally: # Always emit what we have, even in an exceptional case
+        program.emit()

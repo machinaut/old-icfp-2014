@@ -1,0 +1,7 @@
+# util.lambda - general utility functions
+
+# Max and Min functions
+(defun max (a b) (if (> a b) a b))
+(defun min (a b) (if (> a b) b a))
+
+(max 9 99)
