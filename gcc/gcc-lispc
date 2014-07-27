@@ -333,7 +333,11 @@ class Expression(object):
             elif isa(proc, Function):
                 self.instruction(Ldf, proc.name).emit()
                 self.instruction(Ap, proc.num_args).emit()
-            return
+            elif proc is not None or exps :
+                # A simple expression like ((exp)) will be emitted without
+                # returning a proc, which is fine, but multiple exps in
+                # one exp is not valid ((exp) (exp))
+                raise ValueError("Invalid proc '%s' in exp %r" % (proc, x))
 
 ################ read, and user interaction
 
