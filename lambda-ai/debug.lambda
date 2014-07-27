@@ -2,3 +2,9 @@
 # Returns val
 (defun debug (val)
     (asmcall _debug val))
+
+# Debug output of tag
+# Debug output of val
+# Returns val
+(defun debug_tag (tag val)
+    (asmcall _debug_tag tag val))
