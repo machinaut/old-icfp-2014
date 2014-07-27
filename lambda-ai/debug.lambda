@@ -6,5 +6,5 @@
 # Debug output of tag
 # Debug output of val
 # Returns val
-(defun debug_tag (tag val)
+(defun debug-tag (tag val)
     (asmcall _debug_tag tag val))
