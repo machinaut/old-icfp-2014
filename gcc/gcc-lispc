@@ -15,12 +15,20 @@ class Program(object):
         self.debug_level = debug_level
 
         self.regions = []
+        self.main_region = None
 
     def new_region(self):
         index = len(self.regions)
         region = io.StringIO("")
         self.regions.append(region)
         return index
+
+    def register_main(self, region):
+        """
+        Register a region as the main region.
+        This region will be emitted before all others.
+        """
+        self.main_region = region
 
     def output(self, region, s):
         print(s, file=self.regions[region])
@@ -30,7 +38,13 @@ class Program(object):
             self.output(out, "; %s" % comment)
 
     def emit(self):
+        if self.main_region is not None:
+            print("; region %d (main)" % self.main_region)
+            print(self.regions[self.main_region].getvalue())
+
         for i, region in enumerate(self.regions):
+            if i == self.main_region:
+                continue
             print("; region %d" % i)
             print(region.getvalue())
 
@@ -253,6 +267,11 @@ class Expression(object):
 
         # Allocate space to emit the function
         region = self.program.new_region()
+
+        # main is a special case, which should be emitted
+        # first
+        if name == 'main':
+            self.program.register_main(region)
 
         self.program.debug_comment(region, 1, "function %s %s" % (name, to_string(args)))
         self.label(name, region=region).emit()
