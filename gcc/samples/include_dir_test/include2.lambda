@@ -1,0 +1,4 @@
+!include "util.lambda"
+
+(defun moduloN (n)
+    (lambda (b) (modulo n b)))
