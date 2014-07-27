@@ -317,6 +317,7 @@ class Expression(object):
             self.program.debug_comment(self.region, 4, "Symbol %s = %s" % (x, sym))
             if isa(sym, EnvRef):
                 self.instruction(Ld, depth, sym).emit()
+                return
             return sym
         elif not isa(x, list):         # constant literal
             self.instruction(Ldc, x).emit()
