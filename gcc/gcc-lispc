@@ -40,9 +40,9 @@ class Program(object):
 ################ Instructions
 
 class Instruction(object):
-    def __init__(self, program, output, op1=None, op2=None):
+    def __init__(self, program, region, op1=None, op2=None):
         self.program = program
-        self.output = output
+        self.region = region
         self.op1 = op1
         self.op2 = op2
 
@@ -73,7 +73,7 @@ class Instruction(object):
         return r
 
     def emit(self):
-        self.program.output(self.output, str(self))
+        self.program.output(self.region, str(self))
 
 class Add(Instruction):
     name = 'ADD'
@@ -201,25 +201,25 @@ class Function(object):
 ################ eval
 
 class Label(object):
-    def __init__(self, name, program, output):
+    def __init__(self, name, program, region):
         self.name = name
         self.program = program
-        self.output = output
+        self.region = region
 
     def emit(self):
-        self.program.output(self.output, "%s:" % self.name)
+        self.program.output(self.region, "%s:" % self.name)
 
     def __repr__(self):
         return self.name
 
 class Expression(object):
-    def __init__(self, expression, program, env=global_env, output=Program.MAIN):
+    def __init__(self, expression, program, env=global_env, region=Program.MAIN):
         self.program = program
         self.expression = expression
         self.env = env
-        self.output = output
+        self.region = region
 
-        self.program.debug_comment(output, 3, "New expression: %s" % expression)
+        self.program.debug_comment(region, 3, "New expression: %s" % expression)
 
     def define_func(self, name, args, body):
         self.program.debug_comment(Program.FUNCTION, 1, "function %s %s" % (name, to_string(args)))
@@ -234,39 +234,39 @@ class Expression(object):
             local_env[a] = Ld(self.program, Program.FUNCTION, 0, i)
 
         # This gives us parent frames from the point of function
-        body = Expression(body, self.program, env=local_env, output=Program.FUNCTION)
+        body = Expression(body, self.program, env=local_env, region=Program.FUNCTION)
         body.emit()
 
         Rtn(self.program, Program.FUNCTION).emit()
 
     def emit_if(self, test, conseq, alt):
-        true_label = Label("if_true_%d" % self.program.total_if_count, self.program, self.output)
-        false_label = Label("if_false_%d" % self.program.total_if_count, self.program, self.output)
-        after_label = Label("if_after_%d" % self.program.total_if_count, self.program, self.output)
+        true_label = Label("if_true_%d" % self.program.total_if_count, self.program, self.region)
+        false_label = Label("if_false_%d" % self.program.total_if_count, self.program, self.region)
+        after_label = Label("if_after_%d" % self.program.total_if_count, self.program, self.region)
         self.program.total_if_count += 1
 
         # Execute the test condition
-        test = Expression(test, self.program, self.env, self.output)
+        test = Expression(test, self.program, self.env, self.region)
         test.emit()
 
         # Jump to true or false case
-        Sel(self.program, self.output, true_label, false_label).emit()
+        Sel(self.program, self.region, true_label, false_label).emit()
 
         # After true or false case completion, jump to end
-        Ldc(self.program, self.output, 1).emit()
-        Sel(self.program, self.output, after_label, 0).emit()
+        Ldc(self.program, self.region, 1).emit()
+        Sel(self.program, self.region, after_label, 0).emit()
 
         # True case, then join back to above
         true_label.emit()
-        conseq = Expression(conseq, self.program, self.env, self.output)
+        conseq = Expression(conseq, self.program, self.env, self.region)
         conseq.emit()
-        Join(self.program, self.output).emit()
+        Join(self.program, self.region).emit()
 
         # False case, then join back to above
         false_label.emit()
-        alt = Expression(alt, self.program, self.env, self.output)
+        alt = Expression(alt, self.program, self.env, self.region)
         alt.emit()
-        Join(self.program, self.output).emit()
+        Join(self.program, self.region).emit()
 
         # When done, jump to next instructions
         after_label.emit()
@@ -274,14 +274,14 @@ class Expression(object):
     def emit(self):
         "Evaluate an expression in an environment."
         x = self.expression
-        self.program.debug_comment(self.output, 3, "emit(%r)" % x)
+        self.program.debug_comment(self.region, 3, "emit(%r)" % x)
         if isa(x, Symbol):             # variable reference
             s = self.env.find(x)[x]
             if isa(s, Instruction):
                 s.emit()
             return s
         elif not isa(x, list):         # constant literal
-            Ldc(self.program, self.output, x).emit()
+            Ldc(self.program, self.region, x).emit()
             return
         #elif x[0] == 'quote':          # (quote exp)
         #    (_, exp) = x
@@ -311,14 +311,14 @@ class Expression(object):
             (_, name, args, body) = x
             self.define_func(name, args, body)
         else:                          # (proc exp*)
-            self.program.debug_comment(self.output, 3, "proc '%s'" % x[0])
-            exps = [Expression(exp, self.program, self.env, self.output).emit() for exp in x]
+            self.program.debug_comment(self.region, 3, "proc '%s'" % x[0])
+            exps = [Expression(exp, self.program, self.env, self.region).emit() for exp in x]
             proc = exps.pop(0)
             if isa(proc, Builtin):
-                proc.instr(self.program, self.output).emit()
+                proc.instr(self.program, self.region).emit()
             elif isa(proc, Function):
-                Ldf(self.program, self.output, proc.name).emit()
-                Ap(self.program, self.output, proc.num_args).emit()
+                Ldf(self.program, self.region, proc.name).emit()
+                Ap(self.program, self.region, proc.num_args).emit()
             return
 
 ################ read, and user interaction
