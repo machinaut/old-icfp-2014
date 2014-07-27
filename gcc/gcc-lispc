@@ -221,9 +221,29 @@ class Expression(object):
 
         self.program.debug_comment(region, 3, "New expression: %s" % expression)
 
+    def subexpression(self, exp, env=None, region=None):
+        if env is None:
+            env = self.env
+        if region is None:
+            region = self.region
+
+        return Expression(exp, self.program, env, region)
+
+    def instruction(self, instr, op1=None, op2=None, region=None):
+        if region is None:
+            region = self.region
+
+        return instr(self.program, region, op1=op1, op2=op2)
+
+    def label(self, name, region=None):
+        if region is None:
+            region = self.region
+
+        return Label(name, self.program, region)
+
     def define_func(self, name, args, body):
         self.program.debug_comment(Program.FUNCTION, 1, "function %s %s" % (name, to_string(args)))
-        Label(name, self.program, Program.FUNCTION).emit()
+        self.label(name, region=Program.FUNCTION).emit()
 
         func = Function(name, len(args))
         self.env[name] = func
@@ -231,42 +251,42 @@ class Expression(object):
         local_env = Env(outer=self.env)
 
         for i, a in enumerate(args):
-            local_env[a] = Ld(self.program, Program.FUNCTION, 0, i)
+            local_env[a] = self.instruction(Ld, 0, i, region=Program.FUNCTION)
 
         # This gives us parent frames from the point of function
-        body = Expression(body, self.program, env=local_env, region=Program.FUNCTION)
+        body = self.subexpression(body, env=local_env, region=Program.FUNCTION)
         body.emit()
 
-        Rtn(self.program, Program.FUNCTION).emit()
+        self.instruction(Rtn, region=Program.FUNCTION).emit()
 
     def emit_if(self, test, conseq, alt):
-        true_label = Label("if_true_%d" % self.program.total_if_count, self.program, self.region)
-        false_label = Label("if_false_%d" % self.program.total_if_count, self.program, self.region)
-        after_label = Label("if_after_%d" % self.program.total_if_count, self.program, self.region)
+        true_label = self.label("if_true_%d" % self.program.total_if_count)
+        false_label = self.label("if_false_%d" % self.program.total_if_count)
+        after_label = self.label("if_after_%d" % self.program.total_if_count)
         self.program.total_if_count += 1
 
         # Execute the test condition
-        test = Expression(test, self.program, self.env, self.region)
+        test = self.subexpression(test)
         test.emit()
 
         # Jump to true or false case
-        Sel(self.program, self.region, true_label, false_label).emit()
+        self.instruction(Sel, true_label, false_label).emit()
 
         # After true or false case completion, jump to end
-        Ldc(self.program, self.region, 1).emit()
-        Sel(self.program, self.region, after_label, 0).emit()
+        self.instruction(Ldc, 1).emit()
+        self.instruction(Sel, after_label, 0).emit()
 
         # True case, then join back to above
         true_label.emit()
-        conseq = Expression(conseq, self.program, self.env, self.region)
+        conseq = self.subexpression(conseq)
         conseq.emit()
-        Join(self.program, self.region).emit()
+        self.instruction(Join).emit()
 
         # False case, then join back to above
         false_label.emit()
-        alt = Expression(alt, self.program, self.env, self.region)
+        alt = self.subexpression(alt)
         alt.emit()
-        Join(self.program, self.region).emit()
+        self.instruction(Join).emit()
 
         # When done, jump to next instructions
         after_label.emit()
@@ -281,7 +301,7 @@ class Expression(object):
                 s.emit()
             return s
         elif not isa(x, list):         # constant literal
-            Ldc(self.program, self.region, x).emit()
+            self.instruction(Ldc, x).emit()
             return
         #elif x[0] == 'quote':          # (quote exp)
         #    (_, exp) = x
@@ -312,13 +332,13 @@ class Expression(object):
             self.define_func(name, args, body)
         else:                          # (proc exp*)
             self.program.debug_comment(self.region, 3, "proc '%s'" % x[0])
-            exps = [Expression(exp, self.program, self.env, self.region).emit() for exp in x]
+            exps = [self.subexpression(exp).emit() for exp in x]
             proc = exps.pop(0)
             if isa(proc, Builtin):
-                proc.instr(self.program, self.region).emit()
+                self.instruction(proc.instr).emit()
             elif isa(proc, Function):
-                Ldf(self.program, self.region, proc.name).emit()
-                Ap(self.program, self.region, proc.num_args).emit()
+                self.instruction(Ldf, proc.name).emit()
+                self.instruction(Ap, proc.num_args).emit()
             return
 
 ################ read, and user interaction
