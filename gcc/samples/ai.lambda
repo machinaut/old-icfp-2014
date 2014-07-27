@@ -1,0 +1,42 @@
+# ai.lambda - top level organization of lambdaman ai
+
+#===============================
+#      AI STATE STRUCTURE
+#===============================
+# Important to the rest of this file is understanding the structure of the
+# AI state, which is given as output of main() and step(), and is input to
+# every step.
+#
+# For now, the format is:
+#       [ n, ghostProgs ]
+# Which, like in the specification, is shorthand for
+#       CONS n (CONS ghostProgs 0)
+# n - monotonic counter, starts after main at 0 and is incremented every step
+# ghostProgs - memoize the ghostProgs given to input, for later use
+
+# AI STATE HELPER FUNCTIONS
+# =========================
+# absolutely vital these get updated with the state
+#   Getter functions
+(defun stateGetN          (state) (getN state 0))
+(defun stateGetGhostProgs (state) (getN state 1))
+#   Make a new state from component parts
+(defun makeState (n ghostProgs) (cons n (cons ghostProgs 0)))
+#   Increment N and return new state
+(defun stateIncN (state)
+    (makeState (+ (stateGetN state) 1) (stateGetGhostProgs state)))
+#    Calculate initial AI state
+(defun initState (world ghostProgs) (makeState 0 ghostProgs))
+    
+# step function, takes in the ai state, and the world state
+# returns a pair of: the new ai state, and the move
+# STEP ALGORITHM: for now just go n % 4 (modulo
+(defun step (state world)
+    (cons (stateIncN (state)) (modulo (stateGetN state) 4)))
+
+# main function, takes in the world, and the ghost programs
+# returns a pair of:
+# * initial AI state
+# * and a closure of the step function, defined above
+(defun main (world ghost)
+    (cons (initState world ghost) (lambda (a b) (step a b))))

@@ -4,4 +4,7 @@
 (defun max (a b) (if (> a b) a b))
 (defun min (a b) (if (> a b) b a))
 
-(max 9 99)
+# Modulo function (modulo x y) = x % y = x - (x/y)*y
+(defun modulo (x y) (- x (* (/ x y) y)))
+
+(modulo 67 8)
