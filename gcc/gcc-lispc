@@ -422,14 +422,15 @@ if __name__ == "__main__":
     region = program.new_region()
     tokenized = tokenize(source)
 
-    while tokenized:
-        e = read_from(tokenized)
-        expression = Expression(e, program, region)
-        expression.emit()
+    try:
+        while tokenized:
+            e = read_from(tokenized)
+            expression = Expression(e, program, region)
+            expression.emit()
 
-    # Return at the end of the main program,
-    if program.regions[region].getvalue():
-        program.debug_comment(region, 2, "Return from main program")
-        Rtn(program, region).emit()
-
-    program.emit()
+        # Return at the end of the main program,
+        if program.regions[region].getvalue():
+            program.debug_comment(region, 2, "Return from main program")
+            Rtn(program, region).emit()
+    finally: # Always emit what we have, even in an exceptional case
+        program.emit()
