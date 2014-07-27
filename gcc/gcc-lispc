@@ -343,6 +343,12 @@ def read(s):
 
 def tokenize(s):
     "Convert a string into a list of tokens."
+    news = []
+    for line in s.split('\n'):
+        if len(line) == 0: continue
+        if line[0] == '#': continue # pass on comments
+        news.append(line)
+    s = ''.join(news)
     return s.replace('(',' ( ').replace(')',' ) ').split()
 
 def read_from(tokens):
