@@ -1,0 +1,4 @@
+# Debug output of val
+# Returns val
+(defun debug (val)
+    (asmcall _debug val))
