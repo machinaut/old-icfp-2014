@@ -1,0 +1,66 @@
+#maincontainer {
+    width:100%;
+    max-width: 1300px;
+    background-color: rgba(20,20,28,0.67);
+}
+
+.reactContainer {
+    padding: 10px;
+}
+
+.boardGrid {
+    display: table;
+    width: auto;
+    background-color: #21212A;
+}
+
+.boardRow {
+    display: table-row;
+    width: auto;
+    clear: both;
+}
+
+.boardCell {
+    float: left;/*fix for  buggy browsers*/
+    display: table-column;
+    width: 20px;
+    height: 20px;
+    background-color: #ccc;
+    text-align: center;
+    font-size:10pt;
+}
+
+.v {
+    margin-left: 8px;
+    margin-right: 8px;
+}
+
+.h {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.centered {
+    display: table;
+    margin: 0 auto;
+}
+
+.wall {
+    background-color: #FFFFFF;
+}
+
+.food {
+    background-color: #000000;
+}
+
+.pill {
+    background-color: #000000;
+}
+
+.lambda {
+    background-color: red;
+}
+
+.ghost {
+    background-color: green;
+}
