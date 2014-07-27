@@ -1,7 +1,7 @@
 ; Useful assembly routines
 ; cannot easily be represented in our lisp
 
-; dup, duplicate a single item onto the stack (twice)
+; dup, call with one argument, duplicate a single item onto the stack (twice)
 dup:
     LD 0 0
     LD 0 0
@@ -13,3 +13,7 @@ swap:
     LD 0 0
     RTN
 
+; pop, call with a single argument, returns without it on the stack
+;  effectively pops the top of the stack off
+pop:
+    RTN
