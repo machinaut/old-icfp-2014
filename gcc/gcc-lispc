@@ -385,6 +385,9 @@ class Expression(object):
             if isa(proc, Builtin):
                 self.instruction(proc.instr).emit()
             elif isa(proc, Function):
+                if len(exps) != proc.num_args:
+                    raise ValueError("Call to '%s' expected %d arguments, but found %d" % \
+                                        (proc.name, proc.num_args, len(exps)))
                 self.instruction(Ldf, proc.name).emit()
                 self.instruction(Ap, proc.num_args).emit()
             elif proc is not None or exps :
