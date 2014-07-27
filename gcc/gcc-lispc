@@ -434,7 +434,7 @@ def read_file(filename, directories):
         f = os.path.join(directory, filename)
         try:
             with open(f) as source_file:
-                return source_file.read()
+                return source_file.read(), os.path.abspath(f)
         except FileNotFoundError:
             continue
 
@@ -465,8 +465,9 @@ def preprocess(source, search_path, included=None):
         if match:
             filename = match.group('file')
             if filename not in included:
-                included_source = read_file(filename, search_path)
-                included.append(filename)
+                included_source, included_file = read_file(filename,
+                                                           search_path)
+                included.append(included_file)
                 line, included = preprocess(included_source, search_path,
                                             included)
             else:
@@ -490,7 +491,7 @@ if __name__ == "__main__":
     include_path.insert(0, os.path.dirname(args.source))
 
     # Search for original source file relative to current path
-    source = read_file(args.source, ['.'])
+    source, _ = read_file(args.source, ['.'])
 
     # Search for included source files relative to source path
     preprocessed, _ = preprocess(source, include_path)
