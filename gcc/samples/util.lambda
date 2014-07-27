@@ -4,15 +4,4 @@
 (defun max (a b) (if (> a b) a b))
 (defun min (a b) (if (> a b) b a))
 
-# return the index of max value
-(defun max2 (a0 a1) (if (> a0 a1) 0 1))
-(defun max3 (a0 a1 a2)
-    (if (> a0 a1)
-        (max2 a0 a2)
-        (+ 1 (max2 a1 a2))))
-(defun max4 (a0 a1 a2 a3)
-    (if (> a0 a1)
-        (max3 a0 a2 a3)
-        (+ 1 (max3 a1 a2 a3))))
-
-(max4 9 712 74 1234)
+(max 9 99)
