@@ -1,177 +1,33 @@
-/*
-    I know, I know. It ain't LESS or SASS.
-    But I ain't got time for yo' SASS!
-*/
-
-.sudokuGrid {
-    background-color: rgba(255,255,255,0.37);
-    width: 100%;
-    height: 100%;
-}
-
 #maincontainer {
     width:100%;
-    max-width:500px;
+    max-width: 1300px;
+    background-color: rgba(20,20,28,0.67);
 }
 
-.sudokuRow {
-    padding: 0px;
-    margin: 0px;
+.reactContainer {
+    padding: 10px;
 }
 
-.sudokuCell {
-    width: 33.3%;
-    height: 33.3%;
-    padding: 0px;
-    margin: 0px;
-}
-
-.sudokuCellGrid {
-    height: 100%;
-    width: 100%;
-}
-
-.sudokuCellRow {
-}
-
-.sudokuCellColumn {
-    width:33.3%;
-    height:33.3%;
-    background-color: rgba(255,255,255,0.66);
-    padding: 0px;
-}
-
-div.cellItemContainer {
-    text-align: center;
-}
-
-body {
-    /* Image from -> 
-       http://wallpaperscraft.com/download/spring_garden_flowering_trees_pink_30537/3840x2400 */
-    background: url('../img/sudoku-background.jpg') no-repeat center center fixed; 
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    -o-background-size: cover;
-    background-size: cover;
-}
-
-.sudokuInput {
-    font-family: inherit;
-    font-size: 100%;
-    text-decoration: none;
-    border-radius: 2px;
-    width:100%;
-    height:100%;
-}
-
-.sudokuInput,
-.sudokuNumberBarItem.activeBarItem,
-.resetSelectedButton.activeBarItem {
-    cursor: pointer;
-}
-
-.staticSudoku, .sudokuInput, .sudokuNumberBarItem {
-    font-family: "Open Sans";
-    font-weight: 400;
-    font-size:24pt; 
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-.staticSudoku {
-    cursor: default;
-}
-
-.staticSudokuBackground {
-    width:100%;
-    height:100%;
-    margin: -1px;
-    background-color: rgba(55, 55, 100, 0.1);
-}
-
-#sudokuNumberInputBar {
+.boardGrid {
+    display: table;
     width: auto;
-    max-width:500px;
-    margin: 10px auto;
-    padding: 4px 1px;
-    background: rgba(255, 255, 255, 0.37);
+    background-color: #21212A;
 }
 
-#sudokuNumberInputBar:after { 
-   content: " ";
-   display: block; 
-   height: 0; 
-   clear: both;
+.boardRow {
+    display: table-row;
+    width: auto;
+    clear: both;
 }
 
-.sudokuNumberBarItemContainer {
-    float: left;
-    padding: 0px 2px;
-}
-
-.selectedInput {
-    background-color: rgba(100, 100, 255, 0.3);
-}
-
-/* When it's a valid move (user can click) */
-.sudokuNumberBarItem.activeBarItem,
-    .resetSelectedButton.activeBarItem {
-        background-color: rgba(255, 255, 255, 0.6);
-    color: black;
-}
-
-.sudokuNumberBarItem {
-    float: left;
-    width: 52px;
-    list-style:none;
-    text-align:center;
-    margin: 0px 1px 2px 1px;
-    height: 52px;
-    line-height: 50px;
-    color: #77778A;
-    background-color: rgba(140, 140, 160, 0.3);
-    cursor: default;
-}
-
-.resetSelectedButton {
-    float: left;
-    width: 106px;
-    list-style:none;
-    text-align:center;
-    margin: 0px 1px 2px 3px;
-    height: 52px;
-    line-height: 50px;
-    color: #77778A;
-    background-color: rgba(140, 140, 160, 0.3);
-    cursor: default;
-}
-
-.alignBarItemRight {
-    margin: 0px 5px 0px 1px;
-}
-
-.alignBarItemLeft {
-    margin: 0px 1px 0px 5px;
-}
-
-#winningOverlay {
-    width: 500px;
-    height: 490px;
+.boardCell {
+    float: left;/*fix for  buggy browsers*/
+    display: table-column;
+    width: 20px;
+    height: 20px;
+    background-color: #ccc;
     text-align: center;
-    font-family: "Open Sans";
-    font-weight: 400;
-    font-size:50pt; 
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    background-color: rgba(255,255,255,0.37);
+    font-size:10pt;
 }
 
 .v {
@@ -187,4 +43,24 @@ body {
 .centered {
     display: table;
     margin: 0 auto;
+}
+
+.wall {
+    background-color: #FFFFFF;
+}
+
+.food {
+    background-color: #000000;
+}
+
+.pill {
+    background-color: #000000;
+}
+
+.lambda {
+    background-color: red;
+}
+
+.ghost {
+    background-color: green;
 }

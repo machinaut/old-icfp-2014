@@ -26,10 +26,15 @@ io.on('connection', function (socket) {
 
     pipeToServer.send(JSON.stringify(initRequest));
 
-    socket.on('requestFrame', function (data) {
-        var request = JSON.parse(buf.toString());
+    socket.on('get_board_state', function (data) {
+        //var request = JSON.parse(data);
 
-        console.log("Client wants data from server, " + request.tick);
+        console.log("Client wants data from server, " + data.tick);
+
+        pipeToServer.send(JSON.stringify({
+            type: "frameRequest",
+            params: data.tick
+        }));
     });
 });
 
@@ -39,8 +44,11 @@ pipeFromServer.on('message', function (buf) {
     console.log("message in " + message.type);
 
     if (message.type == "initResponse") {
-        console.log("emiting");
         io.sockets.emit('init_response', message.params);
+    }
+
+    if (message.type == "frameResponse") {
+        io.sockets.emit('frameResponse', message.params);
     }
 });
 

@@ -16,7 +16,7 @@ namespace LambdaManBoardUtil
         public uint TickNumber { get; set; }
 
         [JsonProperty("board")]
-        public byte[][] Board { get; set; }
+        public byte[,] Board { get; set; }
 
         [JsonProperty("ghosts")]
         public List<Ghost> Ghosts { get; set; }
@@ -29,10 +29,18 @@ namespace LambdaManBoardUtil
 
         }
 
-        public BoardFrame(uint tickNumber, byte[][] board)
+        public BoardFrame(uint tickNumber, byte[,] board)
         {
             TickNumber = tickNumber;
             Board = board;
+        }
+
+
+        static byte[] GetBytes(string str)
+        {
+            byte[] bytes = new byte[str.Length * sizeof(char)];
+            System.Buffer.BlockCopy(str.ToCharArray(), 0, bytes, 0, bytes.Length);
+            return bytes;
         }
     }
 
@@ -84,6 +92,33 @@ namespace LambdaManBoardUtil
     }
 
     public class LocationConverter : JsonConverter
+    {
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            var location = value as Location;
+            writer.WriteStartArray();
+            //writer.WriteValue(new List<int>() { location.X, location.Y });
+            writer.WriteValue(location.X);
+            writer.WriteValue(location.Y);
+            writer.WriteEndArray();
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            JArray jObject = JArray.Load(reader);
+            var x = (int)JsonConvert.DeserializeObject(jObject.First.ToString(), typeof(int));
+            var y = (int)JsonConvert.DeserializeObject(jObject.Last.ToString(), typeof(int));
+            return new Location(x, y);
+        }
+
+        public override bool CanConvert(Type objectType)
+        {
+            //return (objectType == typeof(Location));
+            return true;
+        }
+    }
+
+    public class BoardConverter : JsonConverter
     {
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {

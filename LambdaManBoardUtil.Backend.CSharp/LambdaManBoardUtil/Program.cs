@@ -107,6 +107,10 @@ namespace LambdaManBoardUtil
                     fakeTick
                     );
                 _frameTickList.Sort();
+
+                var whoah = JsonConvert.SerializeObject(boardFrame);
+
+                ms.Close();
             }
             
         }
@@ -130,7 +134,6 @@ namespace LambdaManBoardUtil
                     while (true)
                     {
                         var rawRequest = receiver.ReceiveString();
-                        Console.WriteLine("got request!");
 
                         var request = JsonConvert.DeserializeObject<MessageFrame>(rawRequest);
 
@@ -140,8 +143,27 @@ namespace LambdaManBoardUtil
                         {
                             case "initRequest":
                             {
+                                Console.WriteLine("sending init response");
                                 response.Type = "initResponse";
                                 response.Parameters = JsonConvert.SerializeObject(_frameTickList);
+                                break;
+                            }
+                            case "frameRequest":
+                            {
+                                response.Type = "frameResponse";
+                                Console.WriteLine("frameResponse params: {0}", request.Parameters);
+
+                                uint requestedFrame;
+                                if (uint.TryParse(request.Parameters, out requestedFrame)
+                                    && _frames.ContainsKey(requestedFrame))
+                                {
+                                    Console.WriteLine("data: {0}", JsonConvert.SerializeObject(ReadFrameFromDB(requestedFrame)));
+                                    response.Parameters = JsonConvert.SerializeObject(ReadFrameFromDB(requestedFrame));
+                                }
+                                else
+                                {
+                                    response.Parameters = "unknown";
+                                }
                                 break;
                             }
                         }
@@ -149,7 +171,6 @@ namespace LambdaManBoardUtil
                         if (!string.IsNullOrWhiteSpace(response.Type))
                         {
                             var serialized = JsonConvert.SerializeObject(response);
-                            Console.WriteLine("sending init response, \n" + serialized);
                             sender.Send(serialized);
                         }
                     }
