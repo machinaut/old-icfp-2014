@@ -1,4 +1,6 @@
 # ai.lambda - top level organization of lambdaman ai
+!include "util.lambda"
+!include "world.lambda"
 
 #===============================
 #      AI STATE STRUCTURE

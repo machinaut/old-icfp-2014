@@ -1,0 +1,4 @@
+!include "util.lambda"
+!include "include2.lambda"
+
+(modulo 2 (funcall (moduloN 2) 1))
