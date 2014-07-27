@@ -17,25 +17,52 @@
 # n - monotonic counter, starts after main at 0 and is incremented every step
 # ghostProgs - memoize the ghostProgs given to input, for later use
 
+# initpath - path to follow - takes no args
+(defun initPath ( )
+    (cons 0 (cons 0 (cons 0 (cons 0 (cons 0 (cons 0
+    (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1
+    (cons 2 (cons 2 (cons 2 (cons 2 (cons 2 (cons 2
+    (cons 3 (cons 3 (cons 3 (cons 3 (cons 3 (cons 3 0)))))))))))))))))))))))))
+
 # AI STATE HELPER FUNCTIONS
 # =========================
 # absolutely vital these get updated with the state
 #   Getter functions
 (defun stateGetN          (state) (getN state 0))
 (defun stateGetGhostProgs (state) (getN state 1))
+(defun stateGetPath       (state) (getN state 2))
 #   Make a new state from component parts
-(defun makeState (n ghostProgs) (cons n (cons ghostProgs 0)))
-#   Increment N and return new state
-(defun stateIncN (state)
-    (makeState (+ (stateGetN state) 1) (stateGetGhostProgs state)))
+(defun makeState (n ghostProgs path) (cons n (cons ghostProgs (cons path 0))))
+#   Get the next path, either popping of the stack, or replacing if empty
+(defun pathNext (path)
+#   Check if the tail of the list is an int
+    (if (atom (cdr path))
+#       If true, return a new path, created by initPath()
+        (initPath)
+#       If false, return the tail of the current list
+        (cdr path)))
+#   Opposite of pathNext, this pops the latest step off the path
+(defun pathStep (path) (car path))
+#  Get the next state
+(defun stateNext (state) (makeState
+#   Next N
+    (+ (stateGetN state) 1)
+#   Next ghostProgs (doesn't change)
+    (stateGetGhostProgs state)
+#   Next Path
+    (pathNext (stateGetPath state))))
+
 #    Calculate initial AI state
-(defun initState (world ghostProgs) (makeState 0 ghostProgs))
+(defun initState (world ghostProgs) (makeState 0 ghostProgs (initPath)))
     
 # step function, takes in the ai state, and the world state
 # returns a pair of: the new ai state, and the move
 # STEP ALGORITHM: for now just go n % 4 (modulo
-(defun step (state world)
-    (cons (stateIncN (state)) (modulo (debug-tag 1000 (stateGetN state)) 4)))
+(defun step (state world) (cons
+#   Next AI state
+    (stateNext (state))
+#   Step to take
+    (pathStep (stateGetPath state))))
 
 # main function, takes in the world, and the ghost programs
 # returns a pair of:
