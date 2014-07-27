@@ -16,8 +16,9 @@
 # World[3] - Status of Fruit
 (defun worldFrt (world) (getN world 3))
 
-# TODO parse out map
-#  yenik already wrote a getMap (x,y) in assembly, just port that?
+# Parse Map
+# Get contents of the map at x,y
+(defun worldMapXY (world x y) (getN (getN (worldMap world) y) x))
 
 # Parse out Status of Lambda-Man
 # Lambda-Man[0] - Vitality
