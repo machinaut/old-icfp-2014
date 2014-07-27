@@ -378,6 +378,16 @@ class Expression(object):
             self.subexpression(func).emit()
             # Jump to function
             self.instruction(Ap, len(args)).emit()
+        elif x[0] == 'asmcall':         # Direct call to label, no lookup
+            (_, label, *args) = x
+            if not isa(label, Symbol):
+                raise TypeError("asmcall label must be a raw symbol")
+            self.program.debug_comment(self.region, 3, "func '%s' args '%s'" % (label, args))
+            # Emit arguments
+            [self.subexpression(exp).emit() for exp in args]
+            # Jump to function
+            self.instruction(Ldf, label).emit()
+            self.instruction(Ap, len(args)).emit()
         else:                          # (proc exp*)
             self.program.debug_comment(self.region, 3, "proc '%s'" % x[0])
             exps = [self.subexpression(exp).emit() for exp in x]

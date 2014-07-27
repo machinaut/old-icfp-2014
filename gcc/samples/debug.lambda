@@ -1,0 +1,5 @@
+# Print val and returns val
+(defun debug (val)
+    (asmcall _debug val))
+
+(debug 1)
