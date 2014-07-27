@@ -1,9 +1,7 @@
-Sudoku.Web
+LambdaManBoardUtil.Frontend.Web
 ==========
 
-A sudoku app that's touch friendly. It's designed so that you select a square and then the valid moves pop up, so it's easy to play on your phone. (A lot of other approaches use <input> which requires popping up the keyboard)
-
-This is built without using any constraining frameworks that make assumptions for you. Simple JQuery plugin with some basic click functionality. :)
+A viewer for the board. It takes Joe's output from his Python app and displays it.
 
 Install Instructions
 ===============
@@ -16,4 +14,4 @@ Install Instructions
 4. Build app by invoking gulp: `gulp`
 5. Run web server (simple node file server): `node server.js`
 6. Connect to `localhost:8080`
-7. Get some iced tea and chill out, because sudoku is hard!
+7. Get some iced tea and chill out
