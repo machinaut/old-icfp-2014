@@ -2,6 +2,7 @@
 !include "debug.lambda"
 !include "util.lambda"
 !include "world.lambda"
+!include "initPath.lambda"
 
 #===============================
 #      AI STATE STRUCTURE
@@ -16,13 +17,6 @@
 #       CONS n (CONS ghostProgs 0)
 # n - monotonic counter, starts after main at 0 and is incremented every step
 # ghostProgs - memoize the ghostProgs given to input, for later use
-
-# initpath - path to follow - takes no args
-(defun initPath ( )
-    (cons 0 (cons 0 (cons 0 (cons 0 (cons 0 (cons 0
-    (cons 1 (cons 1 (cons 1 (cons 1 (cons 1 (cons 1
-    (cons 2 (cons 2 (cons 2 (cons 2 (cons 2 (cons 2
-    (cons 3 (cons 3 (cons 3 (cons 3 (cons 3 (cons 3 0)))))))))))))))))))))))))
 
 # AI STATE HELPER FUNCTIONS
 # =========================
