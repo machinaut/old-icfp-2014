@@ -4,11 +4,15 @@ AS := $(ICFP_BASE)/gcc/gcc-as
 
 all: ai.gcc
 
+ai.s: .FORCE
+
 %.s: %.lambda
-	$(LISPC) $^ > $@
+	$(LISPC) $< > $@
 
 %.gcc: %.s
-	$(AS) $^ > $@
+	$(AS) $< > $@
 
 clean:
 	rm -f *.s *.gcc
+
+.FORCE:
