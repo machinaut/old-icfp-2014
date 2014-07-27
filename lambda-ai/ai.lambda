@@ -30,7 +30,7 @@
     (makeState (+ (stateGetN state) 1) (stateGetGhostProgs state)))
 #    Calculate initial AI state
 (defun initState (world ghostProgs) (makeState 0 ghostProgs))
-    
+
 # step function, takes in the ai state, and the world state
 # returns a pair of: the new ai state, and the move
 # STEP ALGORITHM: for now just go n % 4 (modulo
