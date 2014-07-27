@@ -8,8 +8,34 @@ import argparse
 import io
 import sys
 
-main_output = io.StringIO("")
-function_output = io.StringIO("")
+class Program(object):
+    MAIN = 1
+    FUNCTION = 2
+
+    def __init__(self, debug_level):
+        self.total_if_count = 0
+        self.debug_level = debug_level
+
+        self.main_output = io.StringIO("")
+        self.function_output = io.StringIO("")
+
+    def output(self, region, s):
+        if region == self.MAIN:
+            f = self.main_output
+        elif region == self.FUNCTION:
+            f = self.function_output
+
+        print(s, file=f)
+
+    def debug_comment(self, out, level, comment):
+        if self.debug_level >= level:
+            self.output(out, "; %s" % comment)
+
+    def emit(self):
+        print("; main program")
+        print(self.main_output.getvalue())
+        print("; functions")
+        print(self.function_output.getvalue())
 
 ################ Instructions
 
@@ -187,7 +213,7 @@ class Label(object):
         return self.name
 
 class Expression(object):
-    def __init__(self, expression, program, env=global_env, output=main_output):
+    def __init__(self, expression, program, env=global_env, output=Program.MAIN):
         self.program = program
         self.expression = expression
         self.env = env
@@ -196,8 +222,8 @@ class Expression(object):
         self.program.debug_comment(output, 3, "New expression: %s" % expression)
 
     def define_func(self, name, args, body):
-        self.program.debug_comment(function_output, 1, "function %s %s" % (name, to_string(args)))
-        Label(name, self.program, function_output).emit()
+        self.program.debug_comment(Program.FUNCTION, 1, "function %s %s" % (name, to_string(args)))
+        Label(name, self.program, Program.FUNCTION).emit()
 
         func = Function(name, len(args))
         self.env[name] = func
@@ -205,13 +231,13 @@ class Expression(object):
         local_env = Env(outer=self.env)
 
         for i, a in enumerate(args):
-            local_env[a] = Ld(self.program, function_output, 0, i)
+            local_env[a] = Ld(self.program, Program.FUNCTION, 0, i)
 
         # This gives us parent frames from the point of function
-        body = Expression(body, self.program, env=local_env, output=function_output)
+        body = Expression(body, self.program, env=local_env, output=Program.FUNCTION)
         body.emit()
 
-        Rtn(self.program, function_output).emit()
+        Rtn(self.program, Program.FUNCTION).emit()
 
     def emit_if(self, test, conseq, alt):
         true_label = Label("if_true_%d" % self.program.total_if_count, self.program, self.output)
@@ -297,18 +323,6 @@ class Expression(object):
 
 ################ read, and user interaction
 
-class Program(object):
-    def __init__(self, debug_level):
-        self.total_if_count = 0
-        self.debug_level = debug_level
-
-    def output(self, o, s):
-        print(s, file=o)
-
-    def debug_comment(self, out, level, comment):
-        if self.debug_level >= level:
-            self.output(out, "; %s" % comment)
-
 def read(s):
     "Read a Scheme expression from a string."
     return read_from(tokenize(s))
@@ -361,11 +375,8 @@ if __name__ == "__main__":
         expression.emit()
 
     # Return at the end of the main program,
-    if main_output.getvalue():
-        program.debug_comment(main_output, 2, "Return from main program")
-        Rtn(program, main_output).emit()
+    if program.main_output.getvalue():
+        program.debug_comment(Program.MAIN, 2, "Return from main program")
+        Rtn(program, Program.MAIN).emit()
 
-    print("; main program")
-    print(main_output.getvalue())
-    print("; functions")
-    print(function_output.getvalue())
+    program.emit()
