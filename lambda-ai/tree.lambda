@@ -1,0 +1,82 @@
+# tree.lambda - functions for manipulation of trees
+
+(defun make-tree (data sibs childs)
+    (cons (cons data childs) sibs))
+
+(defun child (tree)
+    (cdr (car tree)))
+
+(defun sibling (tree)
+    (cdr tree))
+
+(defun has-child (tree)
+    (atom (child tree)))
+
+(defun has-sibling (tree)
+    (atom (sibling tree)))
+
+(defun data (tree)
+    (car (car tree)))
+
+(defun next-x (m x)
+    (if (== m 1)
+        (+ x 1)
+        (if (== m 3)
+            (- x 1)
+            x)))
+
+(defun next-y (m y)
+    (if (== m 0)
+        (+ y 1)
+        (if (== m 2)
+            (- y 1)
+            y)))
+
+(defun enumerate-moves (world heur x y m n)
+    (if (== n 0)
+        0
+        (if (== m 4)
+            0
+            (make-tree
+                (funcall heur world (next-x m x) (next-y m y))
+                (enumerate-moves world heur x y (+ m 1) n)
+                (enumerate-moves world heur (next-x m x) (next-y m y) 0 (- n 1))))
+
+    ))
+
+(defun choosiness (tree)
+    (if (has-sibling tree)
+        (if (has-child tree)
+            (max
+                ( + (data tree) (choosiness (child tree)))
+                (choosiness (sibling tree)))
+            (max
+                (data tree)
+                (choosiness (sibling tree))))
+        (if (has-child tree)
+            ( + (data tree) (choosiness (child tree)))
+            (data tree))))
+
+(defun node-choosiness (tree)
+        (if (has-child tree)
+            ( + (data tree) (choosiness (child tree)))
+            (data tree)))
+
+(defun best-move-yet (best move tree)
+    (if (== move 3)
+        (if (> (node-choosiness tree) (cdr best))
+            3
+            (car best))
+        (best-move-yet
+            (if (> (node-choosiness tree) (cdr best))
+                (cons move (node-choosiness tree))
+                best)
+            (+ move 1)
+            (sibling tree))))
+
+# Pick the best of your 4 possible moves
+(defun best-move (tree)
+    (car (best-move-yet
+        (cons 0 (node-choosiness tree))
+        1
+        (sibling tree))))

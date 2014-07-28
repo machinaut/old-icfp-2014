@@ -14,6 +14,9 @@ ai.s: .FORCE
 %.gcc: %.s
 	$(AS) $< > $@
 
+%.paste: %.gcc
+	cat $^ | xclip -selection c -i
+
 main.gcc:
 	$(AS) $^ > $@
 

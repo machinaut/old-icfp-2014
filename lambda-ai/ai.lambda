@@ -3,6 +3,7 @@
 !include "util.lambda"
 !include "world.lambda"
 !include "run_away.lambda"
+!include "tree.lambda"
 
 #===============================
 #      AI STATE STRUCTURE
@@ -32,13 +33,58 @@
 #    Calculate initial AI state
 (defun initState (world ghostProgs) (makeState 0 ghostProgs))
 
+(defun bonus (item)
+    (if (== item 0)
+        (negate 100000)
+        (if (== item 1)
+            0
+            (if (== item 2)
+                100
+                (if (== item 3)
+                    100
+                    (if (== item 4)
+                        1000
+                        (if (== item 5)
+                            0
+                            (if (== item 6)
+                                0
+                                0))))))))
+
+(defun same-point (p1 p2)
+    (if (== (getX p1) (getX p2))
+        (if (== (getY p1) (getY p2))
+            1
+            0)
+        0))
+
+(defun is-ghost (gstat x y)
+    0)
+#    (if (atom gstat)
+#        0
+#        (+
+#            (same-point (cons x y) (ghostLoc gstat))
+#            (is-ghost (cdr gstat) x y))))
+    
+
+(defun simple-heur (world x y)
+    (+
+        (bonus (worldMapXY world x y))
+        (* (negate 100000) (is-ghost (worldGst world) x y) )))
+
 # step function, takes in the ai state, and the world state
 # returns a pair of: the new ai state, and the move
 # STEP ALGORITHM: for now just go n % 4 (modulo
 (defun step (state world)
     (cons
         (stateIncN (state))
-        (maxDistMove world)))
+        (best-move
+            (debug-tag 9090 (enumerate-moves
+                world
+                simple-heur
+                (getX (worldLmnLoc world))
+                (getY (worldLmnLoc world))
+                0
+                2)))))
 
 # main function, takes in the world, and the ghost programs
 # returns a pair of:
