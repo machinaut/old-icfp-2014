@@ -43,3 +43,17 @@
         (cons
             (funcall func (car list))
             (map func (cdr list)))))
+
+(defun reduce (func list init)
+    (if (atom list)
+        (init)
+        (funcall func (car list) (reduce func (cdr list) init))))
+
+(defun zip (l1 l2)
+    (if (atom l1)
+        (0)
+        (if (atom l2)
+            (0)
+            (cons
+                (cons (car l1) (car l2))
+                (zip (cdr l1) (cdr l2))))))
