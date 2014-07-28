@@ -10,3 +10,30 @@
 # http://en.wikipedia.org/wiki/Linear_congruential_generator
 (defun rand (seed)
     (modulo (+ (* 1103515245 seed) 12345) 65535))
+
+(defun negate (a)
+    (- a (* a 2)))
+
+(defun abs (a)
+    (if (> a 0)
+        (a)
+        (negate a)))
+
+# Recursively count length of list
+# List ends with the integer 0
+(defun lenN (list n)
+    (if (atom list)
+        (n)
+        (lenN (cdr list) (+ n 1))))
+
+# Length of list
+(defun len (list)
+    (lenN list 0))
+
+# Map function to list
+(defun map (func list)
+    (if (atom list)
+        (debug-tag 5000 (list))
+        (cons
+            (debug-tag 4000 (funcall func (debug-tag 3000 (car list))))
+            (map func (cdr list)))))
