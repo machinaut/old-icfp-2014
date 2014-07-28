@@ -1,0 +1,79 @@
+; My first ghost... @_*
+
+mov f, 0 ; reg F stores the direction we are looking now
+
+int 1
+
+mov e, a ; Write lambda man position to regs e&f
+mov f, b ; For later use
+
+int 3	; Get ghost index
+int 5	; Get x-ord and y-ord
+
+mov c, a ; Write our position to regs c&d
+mov d, b ; For later use
+
+;Look up
+sub b, 1
+int 7	    ; cell contents now in reg a
+mov [0],a   ; save the result to datamem
+
+mov a,c
+mov b,d
+
+;Look left
+sub a, 1
+int 7
+mov [1],a   ;16
+
+mov a,c
+mov b,d
+
+;Look down
+add b,1
+int 7
+mov [2],a
+
+mov a,c
+mov b,d
+
+;Look Right
+add a,1
+int 7
+mov [3],a
+
+; if it's to the left & we can move to the left
+jlt 33,e,c	; if X-lambda is less than our x then go to the end of this block
+jeq 33,[1],0	; if we cant go to the left go to the end of the block
+
+mov a,1
+int 8
+int 0
+hlt
+
+; else if it's to the right & we can move to the right
+jgt 39,e,c	;32
+jeq 39,[3],0
+
+mov a,3
+int 8
+int 0
+hlt
+
+; else if it's up & we can go up
+jlt 45,f,d
+jeq 45,[0],0
+
+mov a,2
+int 8
+int 0
+hlt
+
+; else if it's down & we can go down
+jgt 50,f,d
+jeq 50,[2],0
+
+mov a,0
+int 8
+int 0
+hlt
