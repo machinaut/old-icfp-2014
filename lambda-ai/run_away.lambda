@@ -13,16 +13,16 @@
         (worldGst world)))
 
 (defun coordMove (coord direction)
-#   # Up
+    # Up
     (if (== direction 0)
         (cons (getX coord) (- (getY coord) 1))
-#       # Right
+        # Right
         (if (== direction 1)
             (cons (+ (getX coord) 1) (getY coord))
-#           # Down
+            # Down
             (if (== direction 2)
                 (cons (getX coord) (+ (getY coord) 1))
-#               # Left
+                # Left
                 (cons (- (getX coord) 1) (getY coord))))))
 
 (defun coordMoveOrNot (world coord direction)

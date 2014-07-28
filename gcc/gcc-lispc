@@ -457,7 +457,7 @@ def preprocess(source, search_path, included=None):
 
     for line in source.split('\n'):
         oline = line
-        if len(line) > 0 and line[0] == '#':
+        if len(line.strip()) > 0 and line.strip()[0] == '#':
             # Skip comments
             continue
 
