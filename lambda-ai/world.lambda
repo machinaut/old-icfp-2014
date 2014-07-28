@@ -4,7 +4,16 @@
 (defun getN (t n)
     (if (== n 0)
         (car t)
-        (getN (cdr t) (- n 1))))
+        (if (atom (cdr t))
+            (if (== n 1)
+                (cdr t)
+# Element beyond end of list requested
+                (debug-tag 9999 9999))
+            (getN (cdr t) (- n 1)))))
+
+# Parse basic coordinate tuple
+(defun getX (coord) (car coord))
+(defun getY (coord) (cdr coord))
 
 # Parse out basic world tuple
 # World[0] - Map
@@ -32,6 +41,18 @@
 # Lambda-Man[4] - Score
 (defun worldLmnScr (world) (getN (worldLmn world) 4))
 
-# TODO parse out ghosts by ghost number
+# Total number of ghosts
+(defun worldGstCount (world) (len (worldGst world)))
+
+# Get specific ghost number
+(defun worldGstN (world n) (getN (worldGst world) n))
+
+# Parse out Status of Ghost
+# Ghost[0] - Vitality
+(defun ghostVit (ghost) (getN ghost 0))
+# Ghost[1] - Location
+(defun ghostLoc (ghost) (getN ghost 1))
+# Ghost[2] - Direction
+(defun ghostDir (ghost) (getN ghost 2))
 
 # TODO parse out present fruit
