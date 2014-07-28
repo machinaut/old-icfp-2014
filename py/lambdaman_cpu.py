@@ -12,8 +12,6 @@ class LambdaManCPU:
 
         #Registers
         self.c = 0  # %c: control register (program counter / instruction pointer)
-        self.s = 0  # %s: data stack register
-        self.d = 0  # %d: control stack register
         self.e = 0  # %e: environment frame register
 
         #Memory Stacks
@@ -29,7 +27,6 @@ class LambdaManCPU:
                              'FRAME_TAG': 'TAG_ROOT'})
         self.control.append({'tag': 'TAG_STOP',
                              })
-        #self.machine_stop = False
 
         #Instruction Closures
         self.instructions = {'LDC': self.ldc,
@@ -101,10 +98,9 @@ class LambdaManCPU:
             self.fault('FRAME_MISMATCH')
         v = self.frame_value(fp, i)     # i'th element of frame
         self.data.append(v)             # push onto the data stack
-        self.s = len(self.data)
         self.c += 1
 
-    def add(self, args):
+    def add(self, _):
         """
         ADD - integer addition
 
@@ -129,10 +125,9 @@ class LambdaManCPU:
             self.fault('TAG_MISMATCH')
         z = x['data'] + y['data']
         self.data.append({'tag': 'TAG_INT', 'data': z})
-        self.s = len(self.data)
         self.c += 1
 
-    def sub(self, args):
+    def sub(self, _):
         """
         SUB - integer subtraction
 
@@ -156,10 +151,9 @@ class LambdaManCPU:
             self.fault('TAG_MISMATCH')
         z = x['data'] - y['data']
         self.data.append({'tag': 'TAG_INT', 'data': z})
-        self.s = len(self.data)
         self.c += 1
 
-    def mul(self, args):
+    def mul(self, _):
         """
         MUL - integer multiplication
 
@@ -183,10 +177,9 @@ class LambdaManCPU:
             self.fault('TAG_MISMATCH')
         z = x['data'] * y['data']
         self.data.append({'tag': 'TAG_INT', 'data': z})
-        self.s = len(self.data)
         self.c += 1
 
-    def div(self, args):
+    def div(self, _):
         """
         DIV - integer division
 
@@ -211,10 +204,9 @@ class LambdaManCPU:
             self.fault('TAG_MISMATCH')
         z = x['data'] // y['data']
         self.data.append({'tag': 'TAG_INT', 'data': z})
-        self.s = len(self.data)
         self.c += 1
 
-    def ceq(self, args):
+    def ceq(self, _):
         """
         CEQ - compare equal
 
@@ -245,10 +237,9 @@ class LambdaManCPU:
         else:
             z = 0
         self.data.append({'tag': 'TAG_INT', 'data': z})
-        self.s = len(self.data)
         self.c += 1
 
-    def cgt(self, args):
+    def cgt(self, _):
         """
         CGT - compare greater than
 
@@ -279,10 +270,9 @@ class LambdaManCPU:
         else:
             z = 0
         self.data.append({'tag': 'TAG_INT', 'data': z})
-        self.s = len(self.data)
         self.c += 1
 
-    def cgte(self, args):
+    def cgte(self, _):
         """
         CGTE - compare greater than or equal
 
@@ -313,10 +303,9 @@ class LambdaManCPU:
         else:
             z = 0
         self.data.append({'tag': 'TAG_INT', 'data': z})
-        self.s = len(self.data)
         self.c += 1
 
-    def atom(self, args):
+    def atom(self, _):
         """
         ATOM - test if value is an integer
 
@@ -339,7 +328,6 @@ class LambdaManCPU:
         else:
             y = 0
         self.data.append({'tag': 'TAG_INT', 'data': y})
-        self.s = len(self.data)
         self.c += 1
 
     def cons(self, _):
@@ -364,7 +352,7 @@ class LambdaManCPU:
         self.data.append({'tag': 'TAG_CONS', 'data': z})
         self.c += 1
 
-    def car(self, args):
+    def car(self, _):
         """
         CAR - extract first element from CONS cell
 
@@ -386,7 +374,7 @@ class LambdaManCPU:
         self.data.append(y)
         self.c += 1
 
-    def cdr(self, args):
+    def cdr(self, _):
         """
         CDR - extract second element from CONS cell
 
@@ -439,7 +427,7 @@ class LambdaManCPU:
         else:
             self.c = t
 
-    def join(self, args):
+    def join(self, _):
         """
         JOIN - return from branch
 
@@ -473,14 +461,6 @@ class LambdaManCPU:
         x = self.alloc_closure(args[0], self.e)
         self.data.append({'tag': 'TAG_CLOSURE', 'data': x})
         self.c += 1
-
-    def alloc_closure(self, address, environment):
-        """
-        allocate a fresh CLOSURE cell;
-        fill it with the literal code address and the current environment frame pointer;
-        """
-        self.heap.append({'address': address, 'environment': environment})
-        return len(self.heap)-1
 
     def ap(self, args):
         """
@@ -532,19 +512,9 @@ class LambdaManCPU:
         self.control.append(self.e)                 # save frame pointer
         self.control.append({'tag': 'TAG_RET',      # save return address
                              'data': self.c+1})
-        self.d = len(self.control)
 
         self.e = fp     # establish new environment
         self.c = f      # jump to function
-
-    def fault(self, msg):
-        print("system fault error: ", msg)
-        self.print_state()
-        self.machine_stop()
-
-    def alloc_frame(self, size, tag='TAG_NOT_DUM', parent=None):
-        self.environ.append({'FRAME_SIZE': size, 'FRAME_PARENT': parent, 'FRAME_VALUE': [], 'FRAME_TAG': tag})
-        return len(self.environ)-1
 
     def rtn(self, args):
         """
@@ -684,6 +654,24 @@ class LambdaManCPU:
         """
         self.machine_stop()
 
+    # Helper Functions
+    def fault(self, msg):
+        print("system fault error: ", msg)
+        self.print_state()
+        self.machine_stop()
+
+    def alloc_frame(self, size, tag='TAG_NOT_DUM', parent=None):
+        self.environ.append({'FRAME_SIZE': size, 'FRAME_PARENT': parent, 'FRAME_VALUE': [], 'FRAME_TAG': tag})
+        return len(self.environ)-1
+
+    def alloc_closure(self, address, environment):
+        """
+        allocate a fresh CLOSURE cell;
+        fill it with the literal code address and the current environment frame pointer;
+        """
+        self.heap.append({'address': address, 'environment': environment})
+        return len(self.heap)-1
+
     def machine_stop(self):
         raise StopIteration
 
@@ -700,6 +688,7 @@ class LambdaManCPU:
         self.data.append({'data': [x1,x2]})
         return len(self.environ)-1
 
+    # Iterator interface
     def __iter__(self):
         return self
 
@@ -715,7 +704,6 @@ class LambdaManCPU:
 
         if self.c >= len(self.inst):
             raise StopIteration
-
 
     def load(self, source):
         with open(source) as source_stream:
@@ -740,9 +728,7 @@ class LambdaManCPU:
         print('')
         print('Control Register: ', self.c)
         print('Instruction: ', self.inst[self.c])
-        print('Data Ptr:   ', self.s)           # %s: data stack register
         print('Data Stack: ', self.data)        # Data stack
-        print('Control Stack Ptr: ', self.d)    # %d: control stack register
         print('Control: ', self.control)        # Control stack
         print('Environment Ptr: ', self.e)      # %e: environment frame register
         if len(self.environ) != 0:
