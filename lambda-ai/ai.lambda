@@ -2,6 +2,7 @@
 !include "debug.lambda"
 !include "util.lambda"
 !include "world.lambda"
+!include "run_away.lambda"
 
 #===============================
 #      AI STATE STRUCTURE
@@ -37,7 +38,7 @@
 (defun step (state world)
     (cons
         (stateIncN (state))
-        (modulo (rand (stateGetN state)) 4)))
+        (maxDistMove world)))
 
 # main function, takes in the world, and the ghost programs
 # returns a pair of:

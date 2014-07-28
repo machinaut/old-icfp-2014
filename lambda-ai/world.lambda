@@ -29,6 +29,11 @@
 # Get contents of the map at x,y
 (defun worldMapXY (world x y) (getN (getN (worldMap world) y) x))
 
+(defun notWall (world coord)
+    (if (== (worldMapXY world (getX coord) (getY coord)) 0)
+        (0)
+        (1)))
+
 # Parse out Status of Lambda-Man
 # Lambda-Man[0] - Vitality
 (defun worldLmnVit (world) (getN (worldLmn world) 0))

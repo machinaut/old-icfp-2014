@@ -1,0 +1,53 @@
+!include "util.lambda"
+
+# Total distance between two points
+(defun dist (p1 p2)
+    (+
+        (abs (- (getX p1) (getX p2)))
+        (abs (- (getY p1) (getY p2)))))
+
+(defun distToGhosts (world coord)
+    (map
+        (lambda (ghost)
+            (dist coord (ghostLoc ghost)))
+        (worldGst world)))
+
+(defun coordMove (coord direction)
+#   # Up
+    (if (== direction 0)
+        (cons (getX coord) (- (getY coord) 1))
+#       # Right
+        (if (== direction 1)
+            (cons (+ (getX coord) 1) (getY coord))
+#           # Down
+            (if (== direction 2)
+                (cons (getX coord) (+ (getY coord) 1))
+#               # Left
+                (cons (- (getX coord) 1) (getY coord))))))
+
+(defun coordMoveOrNot (world coord direction)
+    (if (notWall world (coordMove coord direction))
+        (coordMove coord direction)
+        (coord)))
+
+(defun nextCoords (world)
+    (map
+        (lambda (d) (coordMoveOrNot world (worldLmnLoc world) d))
+        (cons 0 (cons 1 (cons 2 (cons 3 0))))))
+
+(defun nextSumGstDist (world)
+    (map
+        (lambda (coord) (sum (distToGhosts world coord)))
+        (nextCoords world)))
+
+(defun maxDistMove (world)
+    (cdr
+        (reduce
+            (lambda (move1 move2)
+                (if (> (car move1) (car move2))
+                    (move1)
+                    (move2)))
+            (zip
+                (nextSumGstDist world)
+                (cons 0 (cons 1 (cons 2 (cons 3 0)))))
+            (cons 0 100))))
