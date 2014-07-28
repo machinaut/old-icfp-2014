@@ -25,8 +25,6 @@ class LambdaManCPU:
                              'FRAME_PARENT': None,
                              'FRAME_VALUE': [],
                              'FRAME_TAG': 'TAG_ROOT'})
-        self.control.append({'tag': 'TAG_STOP',
-                             })
 
         #Instruction Closures
         self.instructions = {'LDC': self.ldc,
@@ -50,6 +48,27 @@ class LambdaManCPU:
                              'RAP': self.rap,
                              'STOP': self.stop,
                              }
+        #Machine Interface
+        ''' status may be: RUNNING, STOP, FAULT, TRACE, or BREAKPOINT'''
+        self.status = 'STOP'
+
+    def clear(self):
+        #Registers
+        self.c = 0  # %c: control register (program counter / instruction pointer)
+        self.e = 0  # %e: environment frame register
+
+        #Memory Stacks
+        self.data = []      # Data stack
+        self.control = []   # Control stack
+        self.environ = []   # Environment frame chain
+        self.heap = []      # Data heap
+
+        #Initialization
+        self.environ.append({'FRAME_SIZE': None,
+                             'FRAME_PARENT': None,
+                             'FRAME_VALUE': [],
+                             'FRAME_TAG': 'TAG_ROOT'})
+
     # Instruction Executors
     def ldc(self, args):
         """
@@ -656,9 +675,8 @@ class LambdaManCPU:
 
     # Helper Functions
     def fault(self, msg):
-        print("system fault error: ", msg)
-        self.print_state()
-        self.machine_stop()
+        self.status = 'FAULT'
+        raise StopIteration
 
     def alloc_frame(self, size, tag='TAG_NOT_DUM', parent=None):
         self.environ.append({'FRAME_SIZE': size, 'FRAME_PARENT': parent, 'FRAME_VALUE': [], 'FRAME_TAG': tag})
@@ -673,6 +691,7 @@ class LambdaManCPU:
         return len(self.heap)-1
 
     def machine_stop(self):
+        self.status = 'STOP'
         raise StopIteration
 
     def frame_parent(self, frame_ptr):
@@ -685,8 +704,8 @@ class LambdaManCPU:
         return self.environ[frame_ptr]['FRAME_VALUE'][element]
 
     def alloc_cons(self, x1, x2):
-        self.data.append({'data': [x1,x2]})
-        return len(self.environ)-1
+        self.heap.append({'data': [x1,x2]})
+        return len(self.heap)-1
 
     # Iterator interface
     def __iter__(self):
@@ -736,6 +755,7 @@ class LambdaManCPU:
         else:
             print('Enivronment: NONE')
         print('Heap: ', self.heap)
+        print('Machine State: ', self.status)
         print('')
 
 
@@ -747,6 +767,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     cpu = LambdaManCPU()
+    cpu.control.append({'tag': 'TAG_STOP'})
     cpu.load(args.source)
     cpu.print_prog()
 
@@ -755,6 +776,7 @@ if __name__ == '__main__':
 
     cpu.print_state()
     for tick in cpu:
+        print('tick')
         cpu.print_state()
         if limited:
             if limit <= 0:

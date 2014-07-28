@@ -47,6 +47,15 @@ class GameState:
         '\\': 5,
         '=': 6,
     }
+    mapPrintableItem = {
+        0: '#',
+        1: ' ',
+        2: '.',
+        3: 'o',
+        4: '%',
+        5: '\\',
+        6: '=',
+    }
 
     def __init__(self):
         """
@@ -128,19 +137,29 @@ class GameState:
                 for char in line:
                     if char in GameState.mapItem:
                         if GameState.mapItem[char] == GameState.tiles['lambdaMan']:
-                            self.addLambdaMan((x, y))
+                            self.addLambdaMan([x, y])
                             row.append(GameState.tiles['empty'])
                         elif GameState.mapItem[char] == GameState.tiles['ghost']:
-                            self.addGhost((x, y))
+                            self.addGhost([x, y])
                             row.append(GameState.tiles['empty'])
                         else:
                             row.append(GameState.mapItem[char])
                     x += 1
-                self.board.append(row)
+                if row != []:
+                    self.board.append(row)
                 y += 1
                 x = 0
 
     def printMap(self):
+        for y in range(len(self.board)):
+            for x in range(len(self.board[0])):
+                if self.lambdaMan['location'][0] == x and self.lambdaMan['location'][1] == y:
+                    print('L', end="")
+                else:
+                    print(GameState.mapPrintableItem[self.board[y][x]], end="")
+            print('')
+
+    def print_raw_map(self):
         for row in self.board:
             print(row)
 
