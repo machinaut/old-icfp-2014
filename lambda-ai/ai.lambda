@@ -80,7 +80,7 @@
         (best-move
             (debug-tag 9090 (enumerate-moves
                 world
-                simple-heur
+                (lambda (a b c) (simple-heur a b c))
                 (getX (worldLmnLoc world))
                 (getY (worldLmnLoc world))
                 0
