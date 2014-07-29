@@ -77,14 +77,14 @@
 (defun step (state world)
     (cons
         (stateIncN (state))
-        (best-move
+        (debug-tag 10000 (best-move
             (debug-tag 9090 (enumerate-moves
                 world
                 (lambda (a b c) (simple-heur a b c))
                 (getX (worldLmnLoc world))
                 (getY (worldLmnLoc world))
                 0
-                2)))))
+                2))))))
 
 # main function, takes in the world, and the ghost programs
 # returns a pair of:

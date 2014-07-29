@@ -3,11 +3,22 @@
 (defun make-tree (data sibs childs)
     (cons (cons data childs) sibs))
 
+(defun childInner (tree)
+    (car
+        (if (atom tree)
+            (debug-tag 100 tree)
+            (tree))))
+
 (defun child (tree)
-    (cdr (car tree)))
+    (cdr
+        (if (atom (childInner tree))
+            (debug-tag 110 (childInner tree))
+            (childInner tree))))
 
 (defun sibling (tree)
-    (cdr tree))
+    (if (atom tree)
+        (debug-tag 200 tree)
+        (cdr tree)))
 
 (defun has-child (tree)
     (atom (child tree)))
@@ -15,22 +26,39 @@
 (defun has-sibling (tree)
     (atom (sibling tree)))
 
+(defun dataInner (tree)
+    (car
+        (if (atom tree)
+            (debug-tag 300 tree)
+            (tree))))
+
 (defun data (tree)
-    (car (car tree)))
+    (car
+        (if (atom (dataInner tree))
+            (debug-tag 310 (dataInner tree))
+            (dataInner tree))))
 
-(defun next-x (m x)
+(defun next-x (world m x)
     (if (== m 1)
-        (+ x 1)
+        (if (>= x (worldMapSizeX world))
+            (x)
+            (+ x 1))
         (if (== m 3)
-            (- x 1)
-            x)))
+            (if (> 0 x)
+                (x)
+                (- x 1))
+            (x))))
 
-(defun next-y (m y)
+(defun next-y (world m y)
     (if (== m 0)
-        (+ y 1)
+        (if (>= 0 y)
+            (y)
+            (- y 1))
         (if (== m 2)
-            (- y 1)
-            y)))
+            (if (>= y (worldMapSizeY world))
+                (y)
+                (+ y 1))
+            (y))))
 
 (defun enumerate-moves (world heur x y m n)
     (if (== n 0)
@@ -38,11 +66,9 @@
         (if (== m 4)
             0
             (make-tree
-                (funcall heur world (next-x m x) (next-y m y))
+                (funcall heur world (next-x world m x) (next-y world m y))
                 (enumerate-moves world heur x y (+ m 1) n)
-                (enumerate-moves world heur (next-x m x) (next-y m y) 0 (- n 1))))
-
-    ))
+                (enumerate-moves world heur (next-x world m x) (next-y world m y) 0 (- n 1))))))
 
 (defun choosiness (tree)
     (if (has-sibling tree)
@@ -76,7 +102,7 @@
 
 # Pick the best of your 4 possible moves
 (defun best-move (tree)
-    (car (best-move-yet
+    (best-move-yet
         (cons 0 (node-choosiness tree))
         1
-        (sibling tree))))
+        (sibling tree)))

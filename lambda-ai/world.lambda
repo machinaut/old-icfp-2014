@@ -29,6 +29,17 @@
 # Get contents of the map at x,y
 (defun worldMapXY (world x y) (getN (getN (worldMap world) y) x))
 
+(defun worldMapSize (world)
+    (cons
+        (len (getN (worldMap world) 0))
+        (len (worldMap world))))
+
+(defun worldMapSizeX (world)
+    (car (worldMapSize world)))
+
+(defun worldMapSizeY (world)
+    (cdr (worldMapSize world)))
+
 (defun notWall (world coord)
     (if (== (worldMapXY world (getX coord) (getY coord)) 0)
         (0)
